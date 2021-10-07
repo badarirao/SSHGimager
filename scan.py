@@ -53,6 +53,7 @@ DA convertor has 16bits so it has plus minus 32767 resolution.
 #TODO A Facility for Batch Program
 #TODO incorporate camera module into the software
 #TODO Make use of reference image to determine next scan parameters 
+# TODO make use of new python style - " match - case ""
 """
 
 from galvanometer import Scan
