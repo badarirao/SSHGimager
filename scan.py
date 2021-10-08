@@ -301,27 +301,27 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.filenamedisp = self.filenamedisp.split('/')[-1].split('.')[0]
         if self.scanNum in {4,8,12}:
             whole_data = column_stack((self.Stage.Oneddata,self.Stage.count_data))
-            savetxt(self.fullfilename,whole_data,fmt='%f',delimiter='\t')
+            savetxt(self.filename_shg,whole_data,fmt='%g',delimiter='\t')
         elif self.scanNum == 40:
             with open(self.filename_shg,'ab') as f:
                 for i in range(self.imgSHG.shape[0]):
                     a=self.imgSHG[i,:,:]
-                    savetxt(f,a.T,fmt='%f',delimiter='\t')
+                    savetxt(f,a.T,fmt='%g',delimiter='\t')
                     f.write(b'\n\n')
             with open(self.filename_ref,'ab') as f:
                 for i in range(self.imgRef.shape[0]):
                     a=self.imgRef[i,:,:]
-                    savetxt(f,a.T,fmt='%f',delimiter='\t')
+                    savetxt(f,a.T,fmt='%g',delimiter='\t')
                     f.write(b'\n\n')
             with open(self.filename_processed,'ab') as f:
                 for i in range(self.imgProcessed.shape[0]):
                     a=self.imgProcessed[i,:,:]
-                    savetxt(f,a.T,fmt='%f',delimiter='\t')
+                    savetxt(f,a.T,fmt='%g',delimiter='\t')
                     f.write(b'\n\n')
         else:
-            savetxt(self.filename_shg, self.imgSHG.T, fmt='%f',delimiter='\t')
-            savetxt(self.filename_ref, self.imgRef.T, fmt='%f',delimiter='\t')
-            savetxt(self.filename_processed, self.imgProcessed.T, fmt='%f',delimiter='\t')
+            savetxt(self.filename_shg, self.imgSHG.T, fmt='%g',delimiter='\t')
+            savetxt(self.filename_ref, self.imgRef.T, fmt='%g',delimiter='\t')
+            savetxt(self.filename_processed, self.imgProcessed.T, fmt='%g',delimiter='\t')
         self.sample_name.setText(self.filenamedisp)
         
     def printliveplot_MousePos(self,pos):
@@ -798,6 +798,22 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             QTimer.singleShot(100, loop.quit)
         info.close()
          
+    def check_ref_ON(self):
+        loop = QEventLoop()
+        self.Gal.reference.start()
+        QTimer.singleShot(100, loop.quit)
+        ref = self.Gal.reference.read() * 1000000
+        self.Gal.reference.stop()
+        if  ref < 1000:
+            prompt = "Reference signal is not turned on. Continue without reference?"
+            reply = QtGui.QMessageBox.question(self, 'Message', 
+                     prompt, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+            if reply == QtGui.QMessageBox.Yes:
+                return 1
+            else:
+                return 0
+        return 1
+    
     def run_program(self):
         self.pause_button.setEnabled(True)
         self.stop_button.setEnabled(True)
@@ -827,6 +843,13 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.arr_c = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.apoints,dtype=int)
                 self.stage_stepscanz(self.arr_c)
         elif self.nd == 2:
+            if not self.check_ref_ON():
+                self.stopcall = True
+                self.start_button.setEnabled(True)
+                self.scan_type.setEnabled(True)
+                self.stop_button.setEnabled(False)
+                self.pause_button.setEnabled(False)
+                return
             if self.scanNum == 20:
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
@@ -880,6 +903,13 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.bpoints,dtype=int)
                 self.stage_stepscanxy(self.arr_a,self.arr_b)
         elif self.nd == 3:
+            if not self.check_ref_ON():
+                self.stopcall = True
+                self.start_button.setEnabled(True)
+                self.scan_type.setEnabled(True)
+                self.stop_button.setEnabled(False)
+                self.pause_button.setEnabled(False)
+                return
             if self.scanNum == 40:
                 self.spinBox_xmove.setValue(int(self.xpos.value()))
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
@@ -1009,6 +1039,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.Gal.counter.start()
                 QTimer.singleShot(tstep, loop.quit)
                 self.Gal.counter.stop()
+                self.Gal.reference.stop()
                 if j%2 == 0:
                     self.Gal.img_data[i,j] = self.Gal.counter.read()    
                 else:
@@ -1024,16 +1055,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.timer.start()
         self.timecount.start()
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         #self.liveplot.setImage(self.img,pos=[self.x0,self.y0],scale=[self.xscale,self.yscale])
         
     def update_data30(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()
+        ref = self.Gal.reference.read()*1000000
         # TODO prompt if reference detector is not switched on
-        if ref == 0:
-            ref = 0.00001
+        if ref < 1000:
+            ref = 1
         if self.j%2 == 0:
             self.Gal.img_data[self.i,self.j] = shg
             self.Gal.ref_data[self.i,self.j] = ref
@@ -1061,7 +1092,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             return
         self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         
     def stage_stepscanxy(self,xarr,yarr):
         self.Stage.img_data = -ones((len(xarr),len(yarr)))
@@ -1074,16 +1105,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.timer = QtCore.QTimer()
         self.tstep = int(self.tperstep_set.value()*1000)
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data32)        
         #self.liveplot.setImage(self.img,pos=[self.x0,self.y0],scale=[self.xscale,self.yscale])
         
     def update_data32(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()
-        if ref == 0:
-            ref = 0.00001
+        ref = self.Gal.reference.read()*1000000
+        if ref < 1000:
+            ref = 1
         if self.j%2 == 0:
             self.Stage.img_data[self.i,self.j] = shg
             self.Stage.ref_data[self.i,self.j] = ref
@@ -1095,6 +1126,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Stage.processed_data[-self.i-1,self.j] = shg/ref
             self.Stage.goto_xy(self.Stage.xarr[-self.i-1],self.Stage.yarr[self.j])
         self.Gal.counter.stop()
+        self.Gal.reference.stop()
         self.imgProcessed = self.Stage.processed_data
         self.i = self.i + 1
         if self.i > len(self.Stage.xarr)-1:
@@ -1120,7 +1152,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 while self.Stage.is_ymoving():
                     pass
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data32)        
 
     def stage_stepscanyz(self,yarr,zarr):
@@ -1134,15 +1166,15 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.timer = QtCore.QTimer()
         self.tstep = int(self.tperstep_set.value()*1000)
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)        
         
     def update_data20(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()
-        if ref == 0:
-            ref = 0.00001
+        ref = self.Gal.reference.read()*1000000
+        if ref < 1000:
+            ref = 1
         if self.j%2 == 0:
             self.Stage.img_data[self.i,self.j] = shg
             self.Stage.ref_data[self.i,self.j] = ref
@@ -1154,6 +1186,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Stage.processed_data[-self.i-1,self.j] = shg/ref
             self.Stage.goto_yz(self.Stage.yarr[-self.i-1],self.Stage.zarr[self.j])
         self.Gal.counter.stop()
+        self.Gal.reference.stop()
         self.imgProcessed = self.Stage.processed_data
         self.i = self.i + 1
         if self.i > len(self.Stage.yarr)-1:
@@ -1179,7 +1212,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 while self.Stage.is_zmoving():
                     pass
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)
         
     def stage_stepscanxz(self,xarr,zarr):
@@ -1193,15 +1226,15 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.timer = QtCore.QTimer()
         self.tstep = int(self.tperstep_set.value()*1000)
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data24)        
         
     def update_data24(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()
-        if ref == 0:
-            ref = 0.00001
+        ref = self.Gal.reference.read()*1000000
+        if ref < 1000:
+            ref = 1
         if self.j%2 == 0:
             self.Stage.img_data[self.i,self.j] = shg
             self.Stage.ref_data[self.i,self.j] = ref
@@ -1213,6 +1246,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Stage.processed_data[self.i,self.j] = shg/ref
             self.Stage.goto_xz(self.Stage.xarr[-self.i-1],self.Stage.zarr[self.j])
         self.Gal.counter.stop()
+        self.Gal.reference.stop()
         self.imgProcessed = self.Stage.processed_data
         self.i = self.i + 1
         if self.i > len(self.Stage.xarr)-1:
@@ -1237,7 +1271,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 while self.Stage.is_zmoving():
                     pass
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data24)
         
     def stage_stepscanx(self,xarr):
@@ -1368,15 +1402,15 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.timer = QtCore.QTimer()
         self.tstep = int(self.tperstep_set.value()*1000)
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data40)        
         
     def update_data40(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()
-        if ref == 0:
-            ref = 0.00001
+        ref = self.Gal.reference.read()*1000000
+        if ref < 1000:
+            ref = 1
         if self.j%2 == 0:
             self.Stage.img_data[self.i,self.j] = shg
             self.Stage.ref_data[self.i,self.j] = ref
@@ -1388,6 +1422,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Stage.processed_data[-self.i-1,self.j] = shg/ref
             self.Stage.goto_xy(self.Stage.xarr[-self.i-1],self.Stage.yarr[self.j])
         self.Gal.counter.stop()
+        self.Gal.reference.stop()
         self.imgProcessed = self.Stage.Processed_data
         self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         self.i = self.i + 1        
@@ -1431,7 +1466,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                     while self.Stage.is_zmoving():
                         pass
         self.Gal.counter.start()
-        self.Gal.ref.start()
+        self.Gal.reference.start()
         self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data40)
         
     def x_state_change(self):

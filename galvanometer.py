@@ -263,7 +263,7 @@ class Scan(Galvano):
             buffer_shg = array(self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE),dtype=float)
             number_of_SHG_samples = len(buffer_shg)
             buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
-            buffer_ref[buffer_ref==0] = 0.00001  # to avoid divide by zero error
+            buffer_ref[buffer_ref < 1000] = 1  # to avoid divide by zero error
             buffer = buffer_shg/buffer_ref
         except DaqError:
             print("Daqerror encountered")
