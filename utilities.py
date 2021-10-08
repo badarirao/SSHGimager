@@ -40,6 +40,9 @@ class FakeAdapter():
 
     def __init__(self):
         self.address = ''
+        self.x = 0
+        self.y = 0
+        self.z = 0
 
     def read(self):
         """Return last commands given after the last read call."""
@@ -61,6 +64,15 @@ class FakeAdapter():
         def method(*args):
             pass
         return method
+    
+    def set_xspeed(self,F=1):
+        pass
+    
+    def set_yspeed(self,F=1):
+        pass
+    
+    def set_zspeed(self,F=1):
+        pass
 
 def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
                     dated_folder=False, index=True, datetimeformat="%Y-%m-%d"):

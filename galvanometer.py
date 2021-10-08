@@ -451,6 +451,15 @@ class Scan(Galvano):
         for s in tstep:
             sr.append(self.scanxy(xarr,yarr,s))
         return sr
+    
+    def __del__(self):
+        try:
+            self.taskxy.close()
+            self.counter.close()
+            self.reference.close()
+        except:
+            pass
+        
 """
 img = Scan()
 import numpy as np
