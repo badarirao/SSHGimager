@@ -109,9 +109,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         super().__init__(*args,**kwargs)
         self.filename = "SHGimage"
         self.setupUi(self)
-        pth = os.getcwd()
+        self.pth = sys.path[0]
+        os.chdir(self.pth)
         self.galvanodialog = galsetting()
-        os.chdir(pth)
+        os.chdir(self.pth)
         self.galvanodialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.ds102dialog = ds102setting()
         self.ds102dialog.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -288,6 +289,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         options |= QtWidgets.QFileDialog.DontUseNativeDialog
         self.filename, _ = QtWidgets.QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Parameter Files (*.txt)", options=options)
         if self.filename:
+            curpth = os.getcwd()
+            os.chdir(self.pth)
+            with open('address.txt','r') as f:
+                lines = f.readlines()
+            lines[-1] = os.path.dirname(self.filename)
+            with open('address.txt','w') as f:
+                f.writelines(lines)
+            os.chdir(curpth)
             self.save_imagefile()
     
     def save_imagefile(self):
