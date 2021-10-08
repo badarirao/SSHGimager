@@ -68,6 +68,7 @@ from pymeasure.experiment import unique_filename
 from ds102 import DS102
 from PyQt5.QtCore import QEventLoop, QTimer
 from time import sleep
+from utilities import checkInstrument
 
 def item(name, value='', values=None, **kwargs):
     """Add an item to a parameter tree.
@@ -108,7 +109,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         super().__init__(*args,**kwargs)
         self.filename = "SHGimage"
         self.setupUi(self)
+        pth = os.getcwd()
         self.galvanodialog = galsetting()
+        os.chdir(pth)
         self.galvanodialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.ds102dialog = ds102setting()
         self.ds102dialog.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -206,10 +209,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.sample_name.textChanged.connect(self.updatefile)
         self.actionSave.setShortcut('Ctrl+S')
         self.actionSave.setStatusTip('Save the current image to file')
-        self.Gal = Scan()
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com)
         self.initGalvano()
-        self.Stage = DS102(self.ds102dialog.com)
-        self.display_stagemove_msg()
         self.initStage()
         self.display_stagemove_msg()
         self.toolButton_xhome.clicked.connect(self.gohome_xstage)
@@ -236,7 +237,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.zpos.setMinimum(self.ds102dialog.zmin)
         self.zpos.setMaximum(self.ds102dialog.zmax)
         self.zsize.setMaximum(self.ds102dialog.zmax-self.zpos.value())
-        os.chdir(os.path.join(os.path.expandvars("%userprofile%"),"Desktop"))
         self.xpos.setMaximum(self.ds102dialog.xmax)
         self.xpos.setMinimum(self.ds102dialog.xmin)
         self.ypos.setMaximum(self.ds102dialog.ymax)
@@ -294,35 +294,34 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.filename.find('.') != -1:
             index = self.filename.rindex('.')  # rindex returns the last location of '.'
             self.filename = self.filename[:index]
-        self.fullfilename = unique_filename(directory='.',prefix=self.filename,datetimeformat="",ext='txt')
-        self.filenamedisp = self.fullfilename.split('\\')[-1].split('.')[0]
+        self.filename_shg = unique_filename(directory='.',prefix=self.filename+'_shg',datetimeformat="",ext='txt')
+        self.filename_ref = unique_filename(directory='.',prefix=self.filename+'_ref',datetimeformat="",ext='txt')
+        self.filename_processed = unique_filename(directory='.',prefix=self.filename+'_processed',datetimeformat="",ext='txt')
+        self.filenamedisp = self.filename_shg.split('\\')[-1].split('_')[0]
         self.filenamedisp = self.filenamedisp.split('/')[-1].split('.')[0]
-        self.filename_shg = self.fullfilename[:-4]+'_shg.txt'
-        self.filename_ref = self.fullfilename[:-4]+'_ref.txt'
-        self.filename_processed = self.fullfilename[:-4]+'_processed.txt'
         if self.scanNum in {4,8,12}:
             whole_data = column_stack((self.Stage.Oneddata,self.Stage.count_data))
-            savetxt(self.fullfilename,whole_data,fmt='%d',delimiter='\t')
+            savetxt(self.fullfilename,whole_data,fmt='%f',delimiter='\t')
         elif self.scanNum == 40:
             with open(self.filename_shg,'ab') as f:
                 for i in range(self.imgSHG.shape[0]):
                     a=self.imgSHG[i,:,:]
-                    savetxt(f,a.T,fmt='%d',delimiter='\t')
+                    savetxt(f,a.T,fmt='%f',delimiter='\t')
                     f.write(b'\n\n')
             with open(self.filename_ref,'ab') as f:
                 for i in range(self.imgRef.shape[0]):
                     a=self.imgRef[i,:,:]
-                    savetxt(f,a.T,fmt='%d',delimiter='\t')
+                    savetxt(f,a.T,fmt='%f',delimiter='\t')
                     f.write(b'\n\n')
             with open(self.filename_processed,'ab') as f:
                 for i in range(self.imgProcessed.shape[0]):
                     a=self.imgProcessed[i,:,:]
-                    savetxt(f,a.T,fmt='%d',delimiter='\t')
+                    savetxt(f,a.T,fmt='%f',delimiter='\t')
                     f.write(b'\n\n')
         else:
-            savetxt(self.filename_shg, self.imgSHG.T, fmt='%d',delimiter='\t')
-            savetxt(self.filename_ref, self.imgRef.T, fmt='%d',delimiter='\t')
-            savetxt(self.filename_processed, self.imgProcessed.T, fmt='%d',delimiter='\t')
+            savetxt(self.filename_shg, self.imgSHG.T, fmt='%f',delimiter='\t')
+            savetxt(self.filename_ref, self.imgRef.T, fmt='%f',delimiter='\t')
+            savetxt(self.filename_processed, self.imgProcessed.T, fmt='%f',delimiter='\t')
         self.sample_name.setText(self.filenamedisp)
         
     def printliveplot_MousePos(self,pos):
@@ -757,7 +756,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.spinBox_zmove.setMaximum(self.ds102dialog.zmax)
         self.spinBox_zmove.setMinimum(self.ds102dialog.zmin)
         self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
+        sleep(0.1)
         self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
+        sleep(0.1)
         self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
         if self.scan_type.currentIndex() == 1:
             self.xpos.setMaximum(self.ds102dialog.xmax)

@@ -25,8 +25,8 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
     def __init__(self,*args, obj=None, **kwargs):
         super().__init__(*args,**kwargs)
         with open('address.txt','r') as f:
-            self.setting_address = f.readline()
-            self.data_address = f.readline()
+            self.setting_address = f.readline().rstrip()
+            self.data_address = f.readline().rstrip()
         self.filename = "SHG_default_Settings.txt"
         self.load_parameters_from_file()
         self.changed = False

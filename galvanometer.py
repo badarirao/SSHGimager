@@ -189,7 +189,9 @@ class Scan(Galvano):
         self.s_clock_chan = '/' + daq + s_clock
         self.create_ctr()
         self.create_ref()
-        self.img_data = zeros(10)
+        self.img_Processed = zeros(10)
+        self.img_dataSHG = zeros(10)
+        self.img_dataRef = zeros(10)
         self.scanning = True
     
     def create_ctr(self):
@@ -258,8 +260,9 @@ class Scan(Galvano):
         if self.startscan == False:
             return False
         try:
-            buffer_shg = self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
-            buffer_ref = self.reference.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
+            buffer_shg = array(self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE),dtype=float)
+            number_of_SHG_samples = len(buffer_shg)
+            buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
             buffer_ref[buffer_ref==0] = 0.00001  # to avoid divide by zero error
             buffer = buffer_shg/buffer_ref
         except DaqError:
