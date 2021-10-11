@@ -56,6 +56,9 @@ DA convertor has 16bits so it has plus minus 32767 resolution.
 # TODO make use of new python style - " match - case ""
 # Initial stage moving before scan is very slow
 # Abort scan when stage is moving to scan position
+# TODO: in scan type 37, if y has less than 5 points to scan, there is some problem
+# in drawing the final 3d image. Only half of 2d image of last scan is drawn.
+
 """
 
 from galvanometer import Scan
@@ -342,10 +345,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if mx > self.a0 and my > self.b0 and mx < self.a1 and my < self.b1:
             xi = int((position.x()-self.a0)/self.ascale)
             yi = int((position.y()-self.b0)/self.bscale)
-            if len(shape(self.img)) == 2:
-                s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.img[xi,yi])
-            elif len(shape(self.img)) == 3:
-                intensity = self.img[self.liveplot.currentIndex,xi,yi]
+            if len(shape(self.imgProcessed)) == 2:
+                s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.imgProcessed[xi,yi])
+            elif len(shape(self.imgProcessed)) == 3:
+                intensity = self.imgProcessed[self.liveplot.currentIndex,xi,yi]
                 s = 'x: ' + str("{:.3f}").format(mx) + '   y: ' + str("{:.3f}").format(my) + \
                     '   z: ' + str("{:.3f}").format(self.Stage.zarr[self.liveplot.currentIndex]) + \
                     '   Intensity = ' + str(intensity)
@@ -519,17 +522,17 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         
         if self.nd == 1:
             self.apoints = self.getpoints()
-            self.img = -ones((self.apoints))
+            self.imgProcessed = -ones((self.apoints))
         elif self.nd == 2:
             self.apoints,self.bpoints = self.getpoints()
-            self.img = -ones((self.apoints,self.bpoints))
+            self.imgProcessed = -ones((self.apoints,self.bpoints))
         elif self.nd == 3:
             self.cpoints,self.apoints, self.bpoints = self.getpoints()
-            self.img = -ones((self.apoints,self.bpoints))
+            self.imgProcessed = -ones((self.apoints,self.bpoints))
         if self.nd == 1:
             if self.xactive.isChecked():
                 self.x0,self.x1 = 0,self.xsize.value()
-                self.xscale = (self.x1-self.x0)/self.img.shape[0]
+                self.xscale = (self.x1-self.x0)/self.imgProcessed.shape[0]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
@@ -544,7 +547,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 labels={'bottom': ("X",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.yactive.isChecked():
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.yscale = (self.y1-self.y0)/self.img.shape[0]
+                self.yscale = (self.y1-self.y0)/self.imgProcessed.shape[0]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
@@ -560,7 +563,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             elif self.zactive.isChecked():
                 self.z0,self.z1 = 0,self.zsize.value()
                 self.a0, self.a1, self.asize = self.z0, self.z1, self.zsize.value()
-                self.zscale = (self.z1-self.z0)/self.img.shape[0]
+                self.zscale = (self.z1-self.z0)/self.imgProcessed.shape[0]
                 labels={'bottom': ("Z",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
                 if self.scan_type.currentIndex() == 0:
                     self.scan_type.setCurrentIndex(1)
@@ -572,7 +575,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             if not self.xactive.isChecked():
                 self.y0,self.y1 = 0,self.ysize.value()
                 self.z0,self.z1 = 0,+self.zsize.value()
-                self.yscale, self.zscale = (self.y1-self.y0)/self.img.shape[0],(self.z1-self.z0)/self.img.shape[1]
+                self.yscale, self.zscale = (self.y1-self.y0)/self.imgProcessed.shape[0],(self.z1-self.z0)/self.imgProcessed.shape[1]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 self.b0, self.b1, self.bsize = self.z0, self.z1, self.zsize.value()
                 self.ascale, self.bscale = self.yscale, self.zscale
@@ -603,7 +606,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             elif not self.yactive.isChecked():
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.z0,self.z1 = 0,self.zsize.value()
-                self.xscale, self.zscale = (self.x1-self.x0)/self.img.shape[0],(self.z1-self.z0)/self.img.shape[1]
+                self.xscale, self.zscale = (self.x1-self.x0)/self.imgProcessed.shape[0],(self.z1-self.z0)/self.imgProcessed.shape[1]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 self.b0, self.b1, self.bsize = self.z0, self.z1, self.zsize.value()
                 self.ascale, self.bscale = self.xscale, self.zscale
@@ -634,7 +637,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             elif not self.zactive.isChecked():
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.xscale, self.yscale = (self.x1-self.x0)/self.img.shape[0],(self.y1-self.y0)/self.img.shape[1]
+                self.xscale, self.yscale = (self.x1-self.x0)/self.imgProcessed.shape[0],(self.y1-self.y0)/self.imgProcessed.shape[1]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 self.b0, self.b1, self.bsize = self.y0, self.y1, self.ysize.value()
                 self.ascale, self.bscale = self.xscale, self.yscale
@@ -701,7 +704,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.liveplot1d.hide()
                 #self.ref_plot1d.hide()
             self.liveplot.view.setLabels(**labels)
-            self.liveplot.setImage(self.img,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         elif self.nd == 1: # 1d plot
             # yet to be implemented
             if self.liveplot.isVisible():
@@ -788,7 +791,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ref_plot.setImage(self.rimg,pos=[self.rx0,self.ry0],scale=[self.rxscale,self.ryscale])
 
         if self.nd > 1:
-            self.liveplot.setImage(self.img,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
             #self.ref_plot.setImage(self.img,pos=[self.a0,self.y0],scale=[self.xscale,self.yscale])
         elif self.nd == 1:
             pass # implement to plot a 2d graph instead of image
@@ -1007,8 +1010,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             else:
                 self.stop_program()
                 print("moved mirror to home position")
+                sleep(0.1)
                 self.Gal.x = self.galvanodialog.xpos
                 self.Gal.y = self.galvanodialog.ypos
+                sleep(0.1)
                 self.imgProcessed = self.img3dProcessed
                 self.imgSHG = self.img3dSHG
                 self.imgRef = self.img3dRef
