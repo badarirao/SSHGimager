@@ -54,6 +54,8 @@ DA convertor has 16bits so it has plus minus 32767 resolution.
 #TODO incorporate camera module into the software
 #TODO Make use of reference image to determine next scan parameters 
 # TODO make use of new python style - " match - case ""
+# Initial stage moving before scan is very slow
+# Abort scan when stage is moving to scan position
 """
 
 from galvanometer import Scan
@@ -311,7 +313,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.scanNum in {4,8,12}:
             whole_data = column_stack((self.Stage.Oneddata,self.Stage.count_data))
             savetxt(self.filename_shg,whole_data,fmt='%g',delimiter='\t')
-        elif self.scanNum == 40:
+        elif self.scanNum in {40,37}:  # 3D scan data
             with open(self.filename_shg,'ab') as f:
                 for i in range(self.imgSHG.shape[0]):
                     a=self.imgSHG[i,:,:]
@@ -1014,6 +1016,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 return
         self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         
+        
     def update_data37(self):
         self.spinBox_zmove.setValue(int(self.arr_c[self.i]))
         self.display_stagemove_msg()
@@ -1432,7 +1435,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Stage.goto_xy(self.Stage.xarr[-self.i-1],self.Stage.yarr[self.j])
         self.Gal.counter.stop()
         self.Gal.reference.stop()
-        self.imgProcessed = self.Stage.Processed_data
+        self.imgProcessed = self.Stage.processed_data
         self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         self.i = self.i + 1        
         if self.i > len(self.Stage.xarr)-1:
