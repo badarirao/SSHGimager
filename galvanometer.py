@@ -248,8 +248,8 @@ class Scan(Galvano):
                                                       samps_per_chan=self.sam_pc)
         self.reference.in_stream.read_all_avail_samp = True
         self.shgData = zeros(self.sam_pc)
-        self.refData = -ones(self.sam_pc)
-        self.processedData = zeros(self.sam_pc)
+        self.refData = -ones(self.sam_pc,dtype=float)
+        #self.processedData = zeros(self.sam_pc)
         self.counter.start()
         self.reference.start()
         self.taskxy.start()
@@ -277,7 +277,6 @@ class Scan(Galvano):
         self.i = self.i+l
         try:
             self.diff_data_shg[self.i-1] = 0
-            self.diff_data_ref[self.i-1] = 0
             self.processedData[self.i-1] = 0
         except IndexError:
             pass
