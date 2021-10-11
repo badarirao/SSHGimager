@@ -6,7 +6,7 @@ Notes:
 
 """
 
-from numpy import ones, append, flip, shape, zeros, diff, linspace, array
+from numpy import ones, append, flip, shape, zeros, diff, linspace, array, divide
 from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection, TimeUnits
 from time import time,sleep
 from nidaqmx import stream_writers, Task
@@ -264,7 +264,6 @@ class Scan(Galvano):
             number_of_SHG_samples = len(buffer_shg)
             buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
             buffer_ref[buffer_ref < 1000] = 1  # to avoid divide by zero error
-            buffer = buffer_shg/buffer_ref
         except DaqError:
             print("Daqerror encountered")
             self.startscan = False
@@ -272,20 +271,20 @@ class Scan(Galvano):
         l = len(buffer_shg)
         self.shgData[self.i:self.i+l] = buffer_shg
         self.refData[self.i:self.i+l] = buffer_ref
-        self.processedData[self.i:self.i+l] = buffer
         self.diff_data_shg = diff(self.shgData)
-        self.diff_data_ref = diff(self.refData)
-        self.diff_data = diff(self.processedData)
+        self.diff_data_ref = self.refData[1:]
+        self.processedData[self.i:self.i+l] = divide(self.shgData[self.i:self.i+l]/
+                                                     self.refData[self.i:self.i+l])
         self.i = self.i+l
         try:
             self.diff_data_shg[self.i-1] = 0
             self.diff_data_ref[self.i-1] = 0
-            self.diff_data[self.i-1] = 0
+            self.processedData[self.i-1] = 0
         except IndexError:
             pass
         self.rawimg_dataSHG = self.diff_data_shg.reshape(len(self.xarr),len(self.yarr),order='F') # some problem with this
         self.rawimg_dataRef = self.diff_data_ref.reshape(len(self.xarr),len(self.yarr),order='F')
-        self.processed_img = self.diff_data.reshape(len(self.xarr),len(self.yarr),order='F')
+        self.processed_img = self.processedData.reshape(len(self.xarr),len(self.yarr),order='F')
         self.img_dataSHG = []
         self.img_dataRef = []
         self.img_Processed = []
@@ -310,7 +309,6 @@ class Scan(Galvano):
         #return not self.taskxy.is_task_done()
         tj = self.taskxy.is_task_done()
         if tj or self.i >= self.sam_pc:
-            #print(tj)
             return False
         return True
     

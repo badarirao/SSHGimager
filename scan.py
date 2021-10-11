@@ -109,7 +109,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         super().__init__(*args,**kwargs)
         self.filename = "SHGimage"
         self.setupUi(self)
-        self.pth = sys.path[0]
+        self.pth = sys.path[0]  # can use os.path.dirname(__file__) if it does not work
         os.chdir(self.pth)
         self.galvanodialog = galsetting()
         os.chdir(self.pth)
