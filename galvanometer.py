@@ -273,8 +273,7 @@ class Scan(Galvano):
         self.refData[self.i:self.i+l] = buffer_ref
         self.diff_data_shg = diff(self.shgData)
         self.diff_data_ref = self.refData[1:]
-        self.processedData[self.i:self.i+l] = divide(self.shgData[self.i:self.i+l]/
-                                                     self.refData[self.i:self.i+l])
+        self.processedData = self.diff_data_shg/self.diff_data_ref
         self.i = self.i+l
         try:
             self.diff_data_shg[self.i-1] = 0
