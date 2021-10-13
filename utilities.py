@@ -5,17 +5,23 @@ Created on Thu Oct  7 15:50:23 2021
 @author: Badari
 """
 from datetime import datetime
+from PyQt5.QtCore import QThread, QEventLoop, QTimer
 from os.path import abspath, join, exists
 from pyvisa import ResourceManager, VisaIOError
 from os import makedirs
 from copy import copy
 from re import sub
 from sys import exit as exitprogram
-from PyQt5.QtCore import QTimer, QEventLoop
 from serial import SerialException
 from nidaqmx.errors import DaqError
 from galvanometer import Scan
 from ds102 import DS102
+
+class MonitorStage(QThread):
+    def run(self, Stage):
+        loop = QEventLoop()
+        while Stage.is_xmoving() or Stage.is_ymoving() or Stage.is_zmoving():
+            QTimer.singleShot(100, loop.quit)
 
 class FakeAdapter():
     """Provides a fake adapter for debugging purposes.

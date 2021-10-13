@@ -65,6 +65,8 @@ from galvanometer import Scan
 from numpy import linspace, ones, ndarray, savetxt, column_stack, shape
 import os, sys
 from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import QThread
 import pyqtgraph as pg
 from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
@@ -73,7 +75,7 @@ from pymeasure.experiment import unique_filename
 from ds102 import DS102
 from PyQt5.QtCore import QEventLoop, QTimer
 from time import sleep
-from utilities import checkInstrument
+from utilities import checkInstrument, MonitorStage
 
 def item(name, value='', values=None, **kwargs):
     """Add an item to a parameter tree.
@@ -800,18 +802,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                  
       
     def display_stagemove_msg(self):
-        loop = QEventLoop()
-        wait_msg = "Stage is moving to starting position. Please wait..."
-        info = QtGui.QMessageBox()
-        if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            info.setText(wait_msg)   # check why it is not displaying this message
-            info.setStandardButtons(QtGui.QMessageBox.NoButton)
-            info.setWindowTitle("Moving Stage. Please wait...")
-            info.show()
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            QTimer.singleShot(100, loop.quit)
-        info.close()
-         
+        info = QMessageBox()
+        info.setWindowTitle("Stage in Motion..")
+        info.setIcon(QMessageBox.Warning)
+        info.setText("Stage is moving to desired position. Please wait...")
+        info.setStandardButtons(QMessageBox.NoButton)
+        stageStatus = MonitorStage(self.Stage)
+        stageStatus.start()
+        stageStatus.finished.connect(info.hide)
+        info.exec()
+    
     def check_ref_ON(self):
         loop = QEventLoop()
         self.Gal.reference.start()
