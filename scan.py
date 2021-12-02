@@ -802,7 +802,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                  
       
     def display_stagemove_msg(self):
-        info = QMessageBox()
+        info = QMessageBox(self)
         info.setWindowTitle("Stage in Motion..")
         info.setIcon(QMessageBox.Warning)
         info.setText("Stage is moving to desired position. Please wait...")

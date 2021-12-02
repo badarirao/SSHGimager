@@ -147,13 +147,13 @@ class Galvano():
         elif self.fast_dir == 'y':
             a1 = yarr
             a2 = xarr
-        if retrace == 1:  # scan each line only in one direction
+        if retrace == 1:  # scan each line only in one direction (only trace)
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr,a1)
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == -1: # scan each line on in opposite direction
+        elif retrace == -1: # scan each line only in opposite direction (only retrace)
             a1_arr = flip(a1)
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):

@@ -17,6 +17,56 @@ from nidaqmx.errors import DaqError
 from galvanometer import Scan
 from ds102 import DS102
 
+class Constants:
+    X_Scan_Continuous_Galvano = 1
+    X_Scan_Step_Galvano = 2
+    X_Scan_Continuous_Stage = 3
+    X_Scan_Step_Stage = 4
+    
+    Y_Scan_Continuous_Galvano = 5
+    Y_Scan_Step_Galvano = 6
+    Y_Scan_Continuous_Stage = 7
+    Y_Scan_Step_Stage = 8
+    
+    #Z_Scan_Continuous_Galvano = 9 # not available
+    #Z_Scan_Step_Galvano = 10 # not available
+    Z_Scan_Continuous_Stage = 11 
+    Z_Scan_Step_Stage = 12 
+    
+    YZ_Scan_Continuous_Galvano = 13
+    YZ_Scan_Step_Galvano = 14
+    YZ_Scan_Continuous_Stage = 15
+    YZ_Scan_Step_Stage = 16
+    
+    ZY_Scan_Continuous_Galvano = 17
+    ZY_Scan_Step_Galvano = 18
+    ZY_Scan_Continuous_Stage = 19
+    ZY_Scan_Step_Stage = 20
+    
+    XZ_Scan_Continuous_Galvano = 21
+    XZ_Scan_Step_Galvano = 22
+    XZ_Scan_Continuous_Stage = 23
+    XZ_Scan_Step_Stage = 24
+    
+    ZX_Scan_Continuous_Galvano = 25
+    ZX_Scan_Step_Galvano = 26
+    ZX_Scan_Continuous_Stage = 27
+    ZX_Scan_Step_Stage = 28
+    
+    XY_Scan_Continuous_Galvano = 29
+    XY_Scan_Step_Galvano = 30
+    XY_Scan_Continuous_Stage = 31
+    XY_Scan_Step_Stage = 32
+    
+    YX_Scan_Continuous_Galvano = 33
+    YX_Scan_Step_Galvano = 34
+    YX_Scan_Continuous_Stage = 35
+    YX_Scan_Step_Stage = 36
+    
+    XYZ_Scan_Continuous_Galvano = 37  # Z is stage scan
+    
+    
+    
 class MonitorStage(QThread):
     def run(self, Stage):
         loop = QEventLoop()
