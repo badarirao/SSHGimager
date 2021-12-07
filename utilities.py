@@ -12,7 +12,7 @@ from os import makedirs
 from copy import copy
 from re import sub
 from sys import exit as exitprogram
-from serial import SerialException
+from serial import SerialException, SerialTimeoutException
 from nidaqmx.errors import DaqError
 from galvanometer import Scan
 from ds102 import DS102
@@ -253,24 +253,10 @@ def get_valid_filename(s):
     return sub(r'(?u)[^-\w.]', '', s)
 
 
-def connectDevice(inst,addr,test = False):
-    """
-    try:
-        return inst(addr), 1
-    except VisaIOError:
-        if test == True:
-            return FakeAdapter(), 0
-        else:
-            # TODO: prompt a gui message instead
-            print("Instrument not connected! Check connections!")
-            exitprogram()
-    """
-    pass
-        
 def checkInstrument(ds102Port = None, test = False):
     try:
         gal = Scan()
-    except DaqError:
+    except (DaqError, FileNotFoundError, AttributeError) as e:
         gal = FakeDAQ()
     try:
         stage = DS102(ds102Port)
@@ -282,7 +268,7 @@ def checkInstrument(ds102Port = None, test = False):
             try:
                 stage = DS102(port)
                 stageConnected = True
-            except ValueError:
+            except (ValueError,SerialTimeoutException, SerialException):
                 pass
         if stageConnected == False:
             stage = FakeDS102()

@@ -200,10 +200,14 @@ class Scan(Galvano):
         except (DaqError, AttributeError):
             pass
         finally:
-            self.counter = Task('counter')
-            self.counter.ci_channels.add_ci_count_edges_chan(self.ctr_chan,
-             initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
-            self.counter.channels.ci_count_edges_term = self.ctr_src_chan
+            try:
+                self.counter = Task('counter')
+                self.counter.ci_channels.add_ci_count_edges_chan(self.ctr_chan,
+                 initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
+                self.counter.channels.ci_count_edges_term = self.ctr_src_chan
+            except Exception as e:
+                print(e)
+                raise DaqError
         
     def create_ref(self):
         try:
@@ -211,11 +215,15 @@ class Scan(Galvano):
         except (DaqError, AttributeError):
             pass
         finally:
-            self.reference = Task()
-            self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',
-             terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
-            self.reference.channels.ai_rng_high = 0.2
-            self.reference.channels.ai_rng_low = -0.2
+            try:
+                self.reference = Task()
+                self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',
+                 terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
+                self.reference.channels.ai_rng_high = 0.2
+                self.reference.channels.ai_rng_low = -0.2
+            except Exception as e:
+                print(e)
+                raise DaqError
             
     def start_scanxy(self,xarr,yarr,retrace=2):
         self.xarr = xarr/self.xscale
