@@ -85,6 +85,7 @@ class DS102(Serial):
             self._x = self.xpos()
             self._y = self.ypos()
             self._z = self.zpos()
+            self.ID = 'DS102'
         
         def zpos(self):
             return -int(self.read_param("AXIsZ:Position?"))

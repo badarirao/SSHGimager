@@ -17,63 +17,80 @@ from nidaqmx.errors import DaqError
 from galvanometer import Scan
 from ds102 import DS102
 
-class Constants:
+class Select:
     X_Scan_Continuous_Galvano = 1
-    X_Scan_Step_Galvano = 2
-    X_Scan_Continuous_Stage = 3
+    X_Scan_Step_Galvano = 2 #not used
+    X_Scan_Continuous_Stage = 3 #not used
     X_Scan_Step_Stage = 4
     
     Y_Scan_Continuous_Galvano = 5
-    Y_Scan_Step_Galvano = 6
-    Y_Scan_Continuous_Stage = 7
+    Y_Scan_Step_Galvano = 6 #not used
+    Y_Scan_Continuous_Stage = 7 #not used
     Y_Scan_Step_Stage = 8
     
     #Z_Scan_Continuous_Galvano = 9 # not available
     #Z_Scan_Step_Galvano = 10 # not available
-    Z_Scan_Continuous_Stage = 11 
+    Z_Scan_Continuous_Stage = 11 #not used
     Z_Scan_Step_Stage = 12 
     
     YZ_Scan_Continuous_Galvano = 13
-    YZ_Scan_Step_Galvano = 14
-    YZ_Scan_Continuous_Stage = 15
+    YZ_Scan_Step_Galvano = 14 #not used
+    YZ_Scan_Continuous_Stage = 15 #not used
     YZ_Scan_Step_Stage = 16
     
     ZY_Scan_Continuous_Galvano = 17
-    ZY_Scan_Step_Galvano = 18
-    ZY_Scan_Continuous_Stage = 19
+    ZY_Scan_Step_Galvano = 18 #not used
+    ZY_Scan_Continuous_Stage = 19 #not used
     ZY_Scan_Step_Stage = 20
     
     XZ_Scan_Continuous_Galvano = 21
-    XZ_Scan_Step_Galvano = 22
-    XZ_Scan_Continuous_Stage = 23
+    XZ_Scan_Step_Galvano = 22 #not used
+    XZ_Scan_Continuous_Stage = 23 #not used
     XZ_Scan_Step_Stage = 24
     
     ZX_Scan_Continuous_Galvano = 25
-    ZX_Scan_Step_Galvano = 26
-    ZX_Scan_Continuous_Stage = 27
+    ZX_Scan_Step_Galvano = 26 #not used
+    ZX_Scan_Continuous_Stage = 27 #not used
     ZX_Scan_Step_Stage = 28
     
     XY_Scan_Continuous_Galvano = 29
-    XY_Scan_Step_Galvano = 30
-    XY_Scan_Continuous_Stage = 31
+    XY_Scan_Step_Galvano = 30 #not used
+    XY_Scan_Continuous_Stage = 31 #not used
     XY_Scan_Step_Stage = 32
     
     YX_Scan_Continuous_Galvano = 33
-    YX_Scan_Step_Galvano = 34
-    YX_Scan_Continuous_Stage = 35
+    YX_Scan_Step_Galvano = 34 #not used
+    YX_Scan_Continuous_Stage = 35 #not used
     YX_Scan_Step_Stage = 36
     
+    # Z is always the last axis order
     XYZ_Scan_Continuous_Galvano = 37  # Z is stage scan
+    XYZ_Scan_Step_Galvano = 38 #not used
+    XYZ_Scan_Continuous_Stage = 39 #not used
+    XYZ_Scan_Step_Stage = 40
     
+    YXZ_Scan_Continuous_Galvano = 41  # Z is stage scan
+    YXZ_Scan_Step_Galvano = 42 #not used
+    YXZ_Scan_Continuous_Stage = 43 #not used
+    YXZ_Scan_Step_Stage = 44
     
     
 class MonitorStage(QThread):
-    def run(self, Stage):
+    def __init__(self, Stage, parent=None):
+        QThread.__init__(self,parent)
+        self.Stage = Stage
+        
+    def run(self):
         loop = QEventLoop()
-        while Stage.is_xmoving() or Stage.is_ymoving() or Stage.is_zmoving():
-            QTimer.singleShot(100, loop.quit)
+        if self.Stage.ID == 'Fake':
+            QTimer.singleShot(5000, loop.quit)
+            loop.exec_()
+        else:
+            while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                QTimer.singleShot(100, loop.quit)
+                loop.exec_()
 
-class FakeAdapter():
+class FakeDAQ():
     """Provides a fake adapter for debugging purposes.
 
     Bounces back the command so that arbitrary values testing is possible.
@@ -99,6 +116,65 @@ class FakeAdapter():
         self.x = 0
         self.y = 0
         self.z = 0
+        self.ID = 'Fake'
+
+    def read(self):
+        """Return last commands given after the last read call."""
+        result = copy(self._buffer)
+        # Reset the buffer
+        self._buffer = ""
+        return result
+
+    def write(self, command):
+        """Write the command to a buffer, so that it can be read back."""
+        self._buffer += command
+
+    def __repr__(self):
+        """Return the class name as a string."""
+        return "<FakeAdapter>"
+
+    def __getattr__(self,name):  
+        """If any undefined method is called, do nothing."""
+        def method(*args):
+            pass
+        return method
+    
+    def set_xspeed(self,F=1):
+        pass
+    
+    def set_yspeed(self,F=1):
+        pass
+    
+    def set_zspeed(self,F=1):
+        pass
+
+class FakeDS102():
+    """Provides a fake adapter for debugging purposes.
+
+    Bounces back the command so that arbitrary values testing is possible.
+
+    Note: Adopted from Pymeasure package
+
+    .. code-block:: python
+
+        a = FakeAdapter()
+        assert a.read() == ""
+        a.write("5")
+        assert a.read() == "5"
+        assert a.read() == ""
+        assert a.ask("10") == "10"
+        assert a.values("10") == [10]
+
+    """
+
+    _buffer = ""
+
+    def __init__(self):
+        self.address = ''
+        self.x = 0
+        self.y = 0
+        self.z = 0
+        self.ID = 'Fake'
 
     def read(self):
         """Return last commands given after the last read call."""
@@ -195,7 +271,7 @@ def checkInstrument(ds102Port = None, test = False):
     try:
         gal = Scan()
     except DaqError:
-        gal = FakeAdapter()
+        gal = FakeDAQ()
     try:
         stage = DS102(ds102Port)
     except (SerialException, ValueError):
@@ -209,7 +285,7 @@ def checkInstrument(ds102Port = None, test = False):
             except ValueError:
                 pass
         if stageConnected == False:
-            stage = FakeAdapter()
+            stage = FakeDS102()
         
     return gal,stage
     """

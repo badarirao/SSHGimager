@@ -75,7 +75,7 @@ from pymeasure.experiment import unique_filename
 from ds102 import DS102
 from PyQt5.QtCore import QEventLoop, QTimer
 from time import sleep
-from utilities import checkInstrument, MonitorStage
+from utilities import checkInstrument, MonitorStage, Select
 
 def item(name, value='', values=None, **kwargs):
     """Add an item to a parameter tree.
@@ -116,8 +116,21 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         super().__init__(*args,**kwargs)
         self.filename = "SHGimage"
         self.setupUi(self)
-        self.pth = sys.path[0]  # can use os.path.dirname(__file__) if it does not work
-        os.chdir(self.pth)
+        self.update_screen()
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com)
+        self.scan_method_change()
+        self.functionalize_buttons()
+        self.initialize()
+        self.initialize_plot()
+        self.show()
+        self.restrict_start_before_initialize()
+        self.initGalvano()
+        self.initStage()
+        self.display_stagemove_msg()
+        self.stopcall = True
+    
+    def update_screen(self):
+        self.pth = os.path.dirname(__file__)
         self.galvanodialog = galsetting()
         os.chdir(self.pth)
         self.galvanodialog.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -156,7 +169,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.liveplot.view.setLabels(**labels)
         self.ref_plot.view.setLabels(**labels)
         self.setWindowTitle("SHG Imaging")
-        self.scan_method_change()
+    
+    def functionalize_buttons(self):
         self.xactive.stateChanged.connect(self.x_state_change)
         self.yactive.stateChanged.connect(self.y_state_change)
         self.zactive.stateChanged.connect(self.z_state_change)
@@ -205,9 +219,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.scan_type.currentIndex() == 0:
             self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
-        self.initialize()
-        self.initialize_plot()
-        self.restrict_start_before_initialize()
         self.ref_plot.roi.sigRegionChanged.connect(self.getroidata)
         self.ref_plot.ui.roiBtn.clicked.connect(self.chkselbutton)
         self.liveplot.view.scene().sigMouseMoved.connect(self.printliveplot_MousePos)
@@ -217,10 +228,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.sample_name.textChanged.connect(self.updatefile)
         self.actionSave.setShortcut('Ctrl+S')
         self.actionSave.setStatusTip('Save the current image to file')
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com)
-        self.initGalvano()
-        self.initStage()
-        self.display_stagemove_msg()
         self.toolButton_xhome.clicked.connect(self.gohome_xstage)
         self.toolButton_yhome.clicked.connect(self.gohome_ystage)
         self.toolButton_zhome.clicked.connect(self.gohome_zstage)
@@ -255,7 +262,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
         self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
         self.scan_type.setCurrentIndex(1)
-        self.stopcall = True
         self.xsize.setValue(500)
         self.ysize.setValue(500)
         self.zsize.setValue(500)
@@ -538,14 +544,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
-                        self.scanNum = 1
+                        self.scanNum = Select.X_Scan_Continuous_Galvano
                     else:
-                        self.scanNum = 2
+                        self.scanNum = Select.X_Scan_Step_Galvano
                 else:
                     if self.scan_method.currentIndex() == 0:
-                        self.scanNum = 3
+                        self.scanNum = Select.X_Scan_Continuous_Stage
                     else:
-                        self.scanNum = 4
+                        self.scanNum = Select.X_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.yactive.isChecked():
                 self.y0,self.y1 = 0,self.ysize.value()
@@ -553,14 +559,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
-                        self.scanNum = 5
+                        self.scanNum = Select.Y_Scan_Continuous_Galvano
                     else:
-                        self.scanNum = 6
+                        self.scanNum = Select.Y_Scan_Step_Galvano
                 else:
                     if self.scan_method.currentIndex() == 0:
-                        self.scanNum = 7
+                        self.scanNum = Select.Y_Scan_Continuous_Stage
                     else:
-                        self.scanNum = 8
+                        self.scanNum = Select.Y_Scan_Step_Stage
                 labels={'bottom': ("Y",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.zactive.isChecked():
                 self.z0,self.z1 = 0,self.zsize.value()
@@ -570,9 +576,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 if self.scan_type.currentIndex() == 0:
                     self.scan_type.setCurrentIndex(1)
                 if self.scan_method.currentIndex() == 0:
-                    self.scanNum = 11
+                    self.scanNum = Select.Z_Scan_Continuous_Stage
                 else:
-                    self.scanNum = 12
+                    self.scanNum = Select.Z_Scan_Step_Stage
         elif self.nd == 2:
             if not self.xactive.isChecked():
                 self.y0,self.y1 = 0,self.ysize.value()
@@ -585,25 +591,25 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
                         if self.yscanorder.currentIndex() == 0:
-                            self.scanNum = 13
+                            self.scanNum = Select.YZ_Scan_Continuous_Galvano
                         else:
-                            self.scanNum = 17
+                            self.scanNum = Select.ZY_Scan_Continuous_Galvano
                     else:
                         if self.yscanorder.currentIndex() == 0:
-                            self.scanNum = 14
+                            self.scanNum = Select.YZ_Scan_Step_Galvano
                         else:
-                            self.scanNum = 18
+                            self.scanNum = Select.ZY_Scan_Step_Galvano
                 else:
                     if self.scan_method.currentIndex() == 0:
                         if self.yscanorder.currentIndex() == 0:
-                            self.scanNum = 15
+                            self.scanNum = Select.YZ_Scan_Continuous_Stage
                         else:
-                            self.scanNum = 19
+                            self.scanNum = Select.ZY_Scan_Continuous_Stage
                     else:
                         if self.yscanorder.currentIndex() == 0:
-                            self.scanNum = 16
+                            self.scanNum = Select.YZ_Scan_Step_Stage
                         else:
-                            self.scanNum = 20
+                            self.scanNum = Select.ZY_Scan_Step_Stage
                 labels={'bottom': ("Y",'μm'), 'left':("Z",'μm'),'top':"",'right':""}
             elif not self.yactive.isChecked():
                 self.x0,self.x1 = 0,self.xsize.value()
@@ -616,25 +622,25 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 21
+                            self.scanNum = Select.XZ_Scan_Continuous_Galvano
                         else:
-                            self.scanNum = 25
+                            self.scanNum = Select.ZX_Scan_Continuous_Galvano
                     else:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 22
+                            self.scanNum = Select.XZ_Scan_Step_Galvano
                         else:
-                            self.scanNum = 26
+                            self.scanNum = Select.ZX_Scan_Step_Galvano
                 else:
                     if self.scan_method.currentIndex() == 0:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 23
+                            self.scanNum = Select.XZ_Scan_Continuous_Stage
                         else:
-                            self.scanNum = 27
+                            self.scanNum = Select.ZX_Scan_Continuous_Stage
                     else:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 24
+                            self.scanNum = Select.XZ_Scan_Step_Stage
                         else:
-                            self.scanNum = 28
+                            self.scanNum = Select.ZX_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Z",'μm'),'top':"",'right':""}
             elif not self.zactive.isChecked():
                 self.x0,self.x1 = 0,self.xsize.value()
@@ -646,25 +652,25 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 if self.scan_type.currentIndex() == 0:
                     if self.scan_method.currentIndex() == 0:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 29
+                            self.scanNum = Select.XY_Scan_Continuous_Galvano
                         else:
-                            self.scanNum = 33
+                            self.scanNum = Select.YX_Scan_Continuous_Galvano
                     else:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 30
+                            self.scanNum = Select.XY_Scan_Step_Galvano
                         else:
-                            self.scanNum = 34
+                            self.scanNum = Select.YX_Scan_Step_Galvano
                 else:
                     if self.scan_method.currentIndex() == 0:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 31
+                            self.scanNum = Select.XY_Scan_Continuous_Stage
                         else:
-                            self.scanNum = 35
+                            self.scanNum = Select.YX_Scan_Continuous_Stage
                     else:
                         if self.xscanorder.currentIndex() == 0:
-                            self.scanNum = 32
+                            self.scanNum = Select.XY_Scan_Step_Stage
                         else:
-                            self.scanNum = 36
+                            self.scanNum = Select.YX_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Y",'μm'),'top':"",'right':""}
         elif self.nd == 3:
             self.x0, self.x1 = 0,self.xsize.value()
@@ -679,25 +685,25 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             if self.scan_type.currentIndex() == 0:
                 if self.scan_method.currentIndex() == 0:
                     if self.xscanorder.currentIndex() == 0:
-                        self.scanNum = 37
+                        self.scanNum = Select.XYZ_Scan_Continuous_Galvano
                     else:
-                        self.scanNum = 41
+                        self.scanNum = Select.YXZ_Scan_Continuous_Galvano
                 else:
                     if self.xscanorder.currentIndex() == 0:
-                        self.scanNum = 38
+                        self.scanNum = Select.XYZ_Scan_Step_Galvano
                     else:
-                        self.scanNum = 42
+                        self.scanNum = Select.YXZ_Scan_Step_Galvano
             else:
                 if self.scan_method.currentIndex() == 0:
                     if self.xscanorder.currentIndex() == 0:
-                        self.scanNum = 39
+                        self.scanNum = Select.XYZ_Scan_Continuous_Stage
                     else:
-                        self.scanNum = 43
+                        self.scanNum = Select.YXZ_Scan_Continuous_Stage
                 else:
                     if self.xscanorder.currentIndex() == 0:
-                        self.scanNum = 40
+                        self.scanNum = Select.XYZ_Scan_Step_Stage
                     else:
-                        self.scanNum = 44
+                        self.scanNum = Select.YXZ_Scan_Step_Stage
             labels={'bottom': ("X",'μm'), 'left':("Y",'μm'),'top':"",'right':""}
         if self.nd >1:
             if not self.liveplot.isVisible():
@@ -804,8 +810,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
     def display_stagemove_msg(self):
         info = QMessageBox(self)
         info.setWindowTitle("Stage in Motion..")
-        info.setIcon(QMessageBox.Warning)
-        info.setText("Stage is moving to desired position. Please wait...")
+        info.setIcon(QMessageBox.Information)
+        info.setText("Stage is moving, Please wait...")
         info.setStandardButtons(QMessageBox.NoButton)
         stageStatus = MonitorStage(self.Stage)
         stageStatus.start()
@@ -835,21 +841,21 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.scan_type.setEnabled(False)
         self.stopcall = False
         if self.nd == 1:
-            if self.scanNum == 4: # 1D x scan
+            if self.scanNum == Select.X_Scan_Step_Stage: # 1D x scan
                 sleep(0.1)
                 self.spinBox_xmove.setValue(int(self.xpos.value()))
                 self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))                
                 self.display_stagemove_msg()
                 self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
                 self.stage_stepscanx(self.arr_a)
-            elif self.scanNum == 8: # 1D Y Scan
+            elif self.scanNum == Select.Y_Scan_Step_Stage: # 1D Y Scan
                 sleep(0.1)
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))                
                 self.display_stagemove_msg()
                 self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.apoints,dtype=int)
                 self.stage_stepscany(self.arr_b)
-            elif self.scanNum == 12:  # 1D Z Scan
+            elif self.scanNum == Select.Z_Scan_Step_Stage:  # 1D Z Scan
                 sleep(0.1)
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
                 self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))                
@@ -864,7 +870,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.stop_button.setEnabled(False)
                 self.pause_button.setEnabled(False)
                 return
-            if self.scanNum == 20:
+            if self.scanNum == Select.ZY_Scan_Step_Stage:
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
                 self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))
@@ -874,7 +880,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.arr_a = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.apoints,dtype=int)
                 self.arr_b = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.bpoints,dtype=int)
                 self.stage_stepscanyz(self.arr_a,self.arr_b)
-            elif self.scanNum == 24:
+            elif self.scanNum == Select.XZ_Scan_Step_Stage:
                 self.spinBox_xmove.setValue(int(self.xpos.value()))
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
                 self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))
@@ -884,7 +890,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
                 self.arr_b = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.bpoints,dtype=int)
                 self.stage_stepscanxz(self.arr_a,self.arr_b)
-            elif self.scanNum == 29:
+            elif self.scanNum == Select.XY_Scan_Continuous_Galvano:
                 self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.asize,self.apoints)
                 self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.bsize,self.bpoints)
                 #self.spinBox_xmove.setValue(int(self.xpos.value()+self.asize/2))
@@ -896,7 +902,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.Gal.srate = self.srate_set.value()
                 self.Gal.start_scanxy(self.arr_a,self.arr_b)
                 self.plot_realtime_data29()
-            elif self.scanNum == 30:
+            elif self.scanNum == Select.XY_Scan_Step_Galvano:
                 self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.asize,self.apoints)
                 self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.bsize,self.bpoints)
                 #self.spinBox_xmove.setValue(int(self.xpos.value()+self.asize/2))
@@ -906,7 +912,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.gal_stepscanxy(self.arr_a,self.arr_b)
                 #self.img = self.Gal.img_data
                 #self.liveplot.setImage(self.img,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            elif self.scanNum == 32:
+            elif self.scanNum == Select.XY_Scan_Step_Stage:
                 self.spinBox_xmove.setValue(int(self.xpos.value()))
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))
@@ -924,7 +930,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.stop_button.setEnabled(False)
                 self.pause_button.setEnabled(False)
                 return
-            if self.scanNum == 40:
+            if self.scanNum == Select.XYZ_Scan_Step_Stage:
                 self.spinBox_xmove.setValue(int(self.xpos.value()))
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
@@ -938,7 +944,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.bpoints,dtype=int)
                 self.arr_c = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.cpoints,dtype=int)
                 self.stage_stepscanxyz(self.arr_a,self.arr_b,self.arr_c)
-            elif self.scanNum == 37:
+            elif self.scanNum == Select.XYZ_Scan_Continuous_Galvano:
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
                 sleep(0.1)
                 self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))
@@ -1607,7 +1613,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
 def main():
     app = QtWidgets.QApplication(sys.argv)
     gui = SHGscan()
-    gui.show()
+    #gui.show()
     #main.connect_instrument()
     sys.exit(app.exec_())
 
