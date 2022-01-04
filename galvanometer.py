@@ -6,7 +6,7 @@ Notes:
 
 """
 
-from numpy import ones, append, flip, shape, zeros, diff, linspace, array
+from numpy import ones, append, flip, shape, zeros, diff, linspace, array, divide
 from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection, TimeUnits
 from time import time,sleep
 from nidaqmx import stream_writers, Task
@@ -147,13 +147,13 @@ class Galvano():
         elif self.fast_dir == 'y':
             a1 = yarr
             a2 = xarr
-        if retrace == 1:  # scan each line only in one direction
+        if retrace == 1:  # scan each line only in one direction (only trace)
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr,a1)
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == -1: # scan each line on in opposite direction
+        elif retrace == -1: # scan each line only in opposite direction (only retrace)
             a1_arr = flip(a1)
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
@@ -189,7 +189,9 @@ class Scan(Galvano):
         self.s_clock_chan = '/' + daq + s_clock
         self.create_ctr()
         self.create_ref()
-        self.img_data = zeros(10)
+        self.img_Processed = zeros(10)
+        self.img_dataSHG = zeros(10)
+        self.img_dataRef = zeros(10)
         self.scanning = True
     
     def create_ctr(self):
@@ -198,10 +200,14 @@ class Scan(Galvano):
         except (DaqError, AttributeError):
             pass
         finally:
-            self.counter = Task('counter')
-            self.counter.ci_channels.add_ci_count_edges_chan(self.ctr_chan,
-             initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
-            self.counter.channels.ci_count_edges_term = self.ctr_src_chan
+            try:
+                self.counter = Task('counter')
+                self.counter.ci_channels.add_ci_count_edges_chan(self.ctr_chan,
+                 initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
+                self.counter.channels.ci_count_edges_term = self.ctr_src_chan
+            except Exception as e:
+                print(e)
+                raise DaqError
         
     def create_ref(self):
         try:
@@ -209,11 +215,15 @@ class Scan(Galvano):
         except (DaqError, AttributeError):
             pass
         finally:
-            self.reference = Task()
-            self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',
-             terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
-            self.reference.channels.ai_rng_high = 0.2
-            self.reference.channels.ai_rng_low = -0.2
+            try:
+                self.reference = Task()
+                self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',
+                 terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
+                self.reference.channels.ai_rng_high = 0.2
+                self.reference.channels.ai_rng_low = -0.2
+            except Exception as e:
+                print(e)
+                raise DaqError
             
     def start_scanxy(self,xarr,yarr,retrace=2):
         self.xarr = xarr/self.xscale
@@ -246,8 +256,8 @@ class Scan(Galvano):
                                                       samps_per_chan=self.sam_pc)
         self.reference.in_stream.read_all_avail_samp = True
         self.shgData = zeros(self.sam_pc)
-        self.refData = -ones(self.sam_pc)
-        self.processedData = zeros(self.sam_pc)
+        self.refData = -ones(self.sam_pc,dtype=float)
+        #self.processedData = zeros(self.sam_pc)
         self.counter.start()
         self.reference.start()
         self.taskxy.start()
@@ -258,10 +268,10 @@ class Scan(Galvano):
         if self.startscan == False:
             return False
         try:
-            buffer_shg = self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
-            buffer_ref = self.reference.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
-            buffer_ref[buffer_ref==0] = 0.00001  # to avoid divide by zero error
-            buffer = buffer_shg/buffer_ref
+            buffer_shg = array(self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE),dtype=float)
+            number_of_SHG_samples = len(buffer_shg)
+            buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
+            buffer_ref[buffer_ref < 1000] = 1  # to avoid divide by zero error
         except DaqError:
             print("Daqerror encountered")
             self.startscan = False
@@ -269,20 +279,18 @@ class Scan(Galvano):
         l = len(buffer_shg)
         self.shgData[self.i:self.i+l] = buffer_shg
         self.refData[self.i:self.i+l] = buffer_ref
-        self.processedData[self.i:self.i+l] = buffer
         self.diff_data_shg = diff(self.shgData)
-        self.diff_data_ref = diff(self.refData)
-        self.diff_data = diff(self.processedData)
+        self.diff_data_ref = self.refData[1:]
+        self.processedData = self.diff_data_shg/self.diff_data_ref
         self.i = self.i+l
         try:
             self.diff_data_shg[self.i-1] = 0
-            self.diff_data_ref[self.i-1] = 0
-            self.diff_data[self.i-1] = 0
+            self.processedData[self.i-1] = 0
         except IndexError:
             pass
         self.rawimg_dataSHG = self.diff_data_shg.reshape(len(self.xarr),len(self.yarr),order='F') # some problem with this
         self.rawimg_dataRef = self.diff_data_ref.reshape(len(self.xarr),len(self.yarr),order='F')
-        self.processed_img = self.diff_data.reshape(len(self.xarr),len(self.yarr),order='F')
+        self.processed_img = self.processedData.reshape(len(self.xarr),len(self.yarr),order='F')
         self.img_dataSHG = []
         self.img_dataRef = []
         self.img_Processed = []
@@ -307,7 +315,6 @@ class Scan(Galvano):
         #return not self.taskxy.is_task_done()
         tj = self.taskxy.is_task_done()
         if tj or self.i >= self.sam_pc:
-            #print(tj)
             return False
         return True
     
@@ -448,6 +455,15 @@ class Scan(Galvano):
         for s in tstep:
             sr.append(self.scanxy(xarr,yarr,s))
         return sr
+    
+    def __del__(self):
+        try:
+            self.taskxy.close()
+            self.counter.close()
+            self.reference.close()
+        except:
+            pass
+        
 """
 img = Scan()
 import numpy as np

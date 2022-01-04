@@ -66,8 +66,8 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
     def __init__(self,*args, obj=None, **kwargs):
         super(galsetting,self).__init__(*args,**kwargs)
         with open('address.txt','r') as f:
-            self.setting_address = f.readline()
-            self.data_address = f.readline()
+            self.setting_address = f.readline().rstrip()
+            self.data_address = f.readline().rstrip()
         self.filename = "SHG_default_Settings.txt"
         self.load_parameters_from_file()
         self.changed = False
@@ -127,8 +127,6 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
             self.ymin = -3.0
             self.xpos = 0.0
             self.ypos = 0.0
-        if os.path.isdir(self.data_address):
-            os.chdir(self.data_address)
             
     def galsetchange(self,param,changes):
         for par, change, data in changes:
