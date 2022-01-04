@@ -72,9 +72,7 @@ class DS102(Serial):
             self.write_param("AXIsZ:SELectSPeed 2")
             self.set_unit(1) # set unit as micrometer
             self.set_xspeed(F=1000)
-            sleep(0.1)
             self.set_yspeed(F=1000)
-            sleep(0.1)
             self.set_zspeed(F=1000)
             if self.read_param('AXIsX:MEMorySwitch0?') == '0':
                 self.initialize_x()
@@ -87,6 +85,15 @@ class DS102(Serial):
             self._z = self.zpos()
             self.ID = 'DS102'
         
+        def read_param(self,param):
+            self.write(bytes(param+'\r','UTF-8'))
+            sleep(0.05)
+            return self.read(100).decode('ascii')[:-1]
+        
+        def write_param(self,param):
+            self.write(bytes(param+'\r','UTF-8'))
+            sleep(0.1)
+            
         def zpos(self):
             return -int(self.read_param("AXIsZ:Position?"))
         
@@ -98,19 +105,16 @@ class DS102(Serial):
             
         def initialize_x(self):
             self.write_param('AXIsX:MEMorySwitch0 9')
-            sleep(0.1)
             self.write_param('AXIsX:GO 2')
             #print('initialized x')
         
         def initialize_y(self):
             self.write_param('AXIsY:MEMorySwitch0 9')
-            sleep(0.1)
             self.write_param('AXIsY:GO 2')
             #print('initialized y')
         
         def initialize_z(self):
             self.write_param('AXIsZ:MEMorySwitch0 9')
-            sleep(0.1)
             self.write_param('AXIsZ:GO 2')
             #print('initialized z')
             
@@ -120,6 +124,8 @@ class DS102(Serial):
         
         @x.setter 
         def x(self,value):
+            if self._x == value:
+                return
             self._x = value
             self.write_param("AXIX:GOABS {0}".format(self._x))
                        
@@ -129,6 +135,8 @@ class DS102(Serial):
         
         @y.setter 
         def y(self,value):
+            if self._y == value:
+                return
             self._y = value
             self.write_param("AXIY:GOABS {0}".format(self._y))
         
@@ -139,46 +147,80 @@ class DS102(Serial):
         @z.setter 
         def z(self,value):
             self._z = value
+            if self._z == value:
+                return
             self.write_param("AXIZ:GOABS {0}".format(-self._z))
-            
-        def read_param(self,param):
-            self.write(bytes(param+'\r','UTF-8'))
-            return self.read(100).decode('ascii')[:-1]
         
-        def write_param(self,param):
-            self.write(bytes(param+'\r','UTF-8'))
+        def goto_x(self,x):
+            self.x = x
+            while self.is_xmoving():
+                pass
+        
+        def goto_y(self,y):
+            self.y = y
+            while self.is_ymoving():
+                pass
+        
+        def goto_z(self,z):
+            self.z = z
+            while self.is_zmoving():
+                pass
 
         def goto_xy(self,x,y):
+            if self._x == x and self._y == y:
+                return
             self.write_param("GOLA X{0} Y{1}".format(x,y))
             self._x = x
             self._y = y
+            while self.is_xmoving() or self.is_ymoving():
+                pass
         
         def goto_xz(self,x,z):
+            if self._x == x and self._z == z:
+                return
             self.write_param("GOLineA X{0} Z{1}".format(x,-z))
             self._x = x
             self._z = z
+            while self.is_xmoving() or self.is_zmoving():
+                pass
         
         def goto_yz(self,y,z):
+            if self._y == y and self._z == z:
+                return
             self.write_param("GOLineA Y{0} Z{1}".format(y,-1*z))
             self._y = y
             self._z = z
+            while self.is_ymoving() or self.is_zmoving():
+                pass
         
         def goto_xyz(self,x,y,z):
+            if self._x == x and self._y == y and self._z == z:
+                return
             self.write_param("GOLineA X{0} Y{1} Z{2}".format(x,y,-z))
             self._x = x
             self._y = y
             self._z = z
+            while self.is_xmoving() or self.is_ymoving() or self.is_zmoving():
+                pass
         
         def gorel_xy(self,x,y):
+            if x==0 and y == 0:
+                return
             self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}".format(x,y))
 
         def gorel_xz(self,x,z):
+            if x == 0 and z == 0:
+                return
             self.write_param("AXIsX:PULSe {0}:AXIsZ:PULSe {1}".format(x,-z))
             
         def gorel_yz(self,y,z):
+            if y == 0 and z == 0:
+                return
             self.write_param("AXIsY:PULSe {0}:AXIsZ:PULSe {1}".format(y,-z))
         
         def gorel_xyz(self,x,y,z):
+            if x == 0 and y == 0 and z == 0:
+                return
             self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}:AXIsZ:PULSe {2}".format(x,y,-z))
             
         def axis(self,data):
@@ -204,11 +246,8 @@ class DS102(Serial):
         
         def set_unit(self,unit):
             self.write_param("AXIsX:UNIT {0}".format(unit))
-            sleep(0.1)
             self.write_param("AXIsY:UNIT {0}".format(unit))
-            sleep(0.1)
             self.write_param("AXIsZ:UNIT {0}".format(unit))
-            sleep(0.1)
         
         def set_driver_division(self, xres=1, yres=1, zres=1):
             xres = get_valid_drive(xres)
@@ -389,27 +428,6 @@ class DS102(Serial):
         def get_inst_ID(self):
             return self.read_param("*IDN?")
         
-        def scanx(self,xarr,tstep):
-            pass
-        
-        def scany(self,yarr,tstep):
-            pass
-        
-        def scanz(self,zarr,tstep):
-            pass
-        
-        def scanxy(self,xyarr,tstep):
-            pass
-        
-        def scanyz(self,yzarr,tstep):
-            pass
-        
-        def scanxz(self,xzarr,tstep):
-            pass
-        
-        def scanxyz(self,xyzarr,tstep):
-            pass
-        
 """
 You can store 64 points and 8 program in the flash memory of the controller
 Advantage of this is that the driving of the stage will be faster as the data transfer distance is small.
@@ -453,8 +471,3 @@ PRG? # request statu of program driving, 0 --> program is driving in sequence
                                        # 2 --> program has stopped
 STOP # stop the driving program
 """
-
-
-            
-        
-        

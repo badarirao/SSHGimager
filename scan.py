@@ -62,7 +62,7 @@ DA convertor has 16bits so it has plus minus 32767 resolution.
 """
 
 from galvanometer import Scan
-from numpy import linspace, ones, ndarray, savetxt, column_stack, shape
+from numpy import linspace, ones, ndarray, savetxt, column_stack, shape, loadtxt
 import os, sys
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QMessageBox
@@ -582,7 +582,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         elif self.nd == 2:
             if not self.xactive.isChecked():
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.z0,self.z1 = 0,+self.zsize.value()
+                self.z0,self.z1 = 0,self.zsize.value()
                 self.yscale, self.zscale = (self.y1-self.y0)/self.imgProcessed.shape[0],(self.z1-self.z0)/self.imgProcessed.shape[1]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 self.b0, self.b1, self.bsize = self.z0, self.z1, self.zsize.value()
@@ -792,9 +792,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
     def initialize_plot(self):
         self.rx0,self.rx1 = (0,self.ds102dialog.xmax)
         self.ry0,self.ry1 = (0,self.ds102dialog.ymax)
-        self.rimg = -ones((400,400))
-        for i in range(10):
-            self.rimg[20+i,30:100] = 10
+        #self.rimg = -ones((400,400))
+        #for i in range(10):
+        #    self.rimg[20+i,30:100] = 10
+        self.rimg = loadtxt("G:\Badari\Google Drive\Chiba Research\Python instrument programs\SHG\h5\shgdata.txt")
+        self.rimg = self.rimg.T
         self.rxscale, self.ryscale = (self.rx1-self.rx0)/self.rimg.shape[0],(self.ry1-self.ry0)/self.rimg.shape[1]
         self.ref_plot.setImage(self.rimg,pos=[self.rx0,self.ry0],scale=[self.rxscale,self.ryscale])
 
@@ -870,7 +872,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.stop_button.setEnabled(False)
                 self.pause_button.setEnabled(False)
                 return
-            if self.scanNum == Select.ZY_Scan_Step_Stage:
+            if self.scanNum == Select.YZ_Scan_Step_Stage:
                 self.spinBox_ymove.setValue(int(self.ypos.value()))
                 self.spinBox_zmove.setValue(int(self.zpos.value()))
                 self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))
@@ -978,7 +980,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Gal.create_taskxy()
             print("moved mirror to home position")
             self.Gal.x = self.galvanodialog.xpos
-            self.Gal.y = self.galvanodialog.ypos            
+            self.Gal.y = self.galvanodialog.ypos           
             #self.spinBox_xmove.setValue(int(self.xpos.value()))
             #self.spinBox_ymove.setValue(int(self.ypos.value()))
         self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
@@ -1190,9 +1192,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.tstep = int(self.tperstep_set.value()*1000)
         self.Gal.counter.start()
         self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)        
+        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data16)        
         
-    def update_data20(self):
+    def update_data16(self):
         # update the plot data, and anything you want to change on screen
         shg = self.Gal.counter.read()
         ref = self.Gal.reference.read()*1000000
@@ -1236,7 +1238,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                     pass
         self.Gal.counter.start()
         self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)
+        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data16)
         
     def stage_stepscanxz(self,xarr,zarr):
         self.Stage.img_data = -ones((len(xarr),len(zarr)))

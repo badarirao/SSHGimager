@@ -10,7 +10,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from nidaqmx import Task
 from nidaqmx.constants import Edge, CountDirection, TerminalConfiguration
 import sys, os
-from pymeasure.experiment import unique_filename
 from numpy import array,savetxt,column_stack
 
 class Ui_MainWindow(object):
@@ -241,4 +240,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
