@@ -273,13 +273,20 @@ class FakeDAQ():
         self.startscan = True
         self.xarr = xarr
         self.yarr = yarr
+        self.retrace = retrace
         self.i = 0
         sample = self.getxyarray(self.xarr,self.yarr,retrace)
         self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
         self.sampleIndex = self.sampleIndex[:,1:].astype(int)
         self.sam_pc = shape(sample)[1]
-        self.shgData = zeros(self.sam_pc)
-        self.refData = -ones(self.sam_pc)
+        if retrace != 0:
+            self.shgData = zeros(self.sam_pc)
+            self.refData = -ones(self.sam_pc)
+        else:
+            self.shgData = zeros(self.sam_pc)
+            self.refData = -ones(self.sam_pc)
+            self.shgData2 = zeros(self.sam_pc)
+            self.refData2 = -ones(self.sam_pc)
     
     def update_scanxy(self):
         if self.startscan == False:
@@ -298,12 +305,25 @@ class FakeDAQ():
         self.diff_data_shg = self.shgData[1:]
         self.img_dataSHG = zeros((len(self.xarr),len(self.yarr)))
         self.img_dataRef = -ones((len(self.xarr),len(self.yarr)))
+        if self.retrace == 0:
+            self.img_dataSHG2 = zeros((len(self.xarr),len(self.yarr)))
+            self.img_dataRef2 = -ones((len(self.xarr),len(self.yarr)))
         for pos in range(self.sam_pc-1):
             i = self.sampleIndex[0,pos]
             j = self.sampleIndex[1,pos]
-            self.img_dataSHG[i,j] = self.diff_data_shg[pos]
-            self.img_dataRef[i,j] = self.refData[pos+1]
+            if self.retrace != 0:
+                self.img_dataSHG[i,j] = self.diff_data_shg[pos]
+                self.img_dataRef[i,j] = self.refData[pos+1]
+            else:
+                if self.img_dataSHG[i,j] == 0:
+                    self.img_dataSHG[i,j] = self.diff_data_shg[pos]
+                    self.img_dataRef[i,j] = self.refData[pos+1]
+                else:
+                    self.img_dataSHG2[i,j] = self.diff_data_shg[pos]
+                    self.img_dataRef2[i,j] = self.refData[pos+1]
         self.img_Processed = self.img_dataSHG/self.img_dataRef
+        if self.retrace == 0:
+            self.img_Processed2 = self.img_dataSHG2/self.img_dataRef2
         self.i += number_of_SHG_samples
         if self.i >= self.sam_pc:
             return False
@@ -329,9 +349,9 @@ class FakeDAQ():
                 a1_arr = append(a1_arr,flip(a1))
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
         elif retrace == 0: # scan trace and retrace a line, then go to next line
-            a1 = append(a1[:-1],flip(a1))
+            a1 = append(a1,flip(a1))
             a1_arr = a1
-            a2_arr = a2[0]*ones(len(a1))
+            a2_arr = a2[0]*ones(len(a1_arr))
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr,a1)
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
@@ -346,8 +366,13 @@ class FakeDAQ():
                 else:
                     a1_arr = append(a1_arr,a1)
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        a1_arr = append(a1_arr[0],a1_arr)
-        a2_arr = append(a2_arr[0],a2_arr)
+        if self.fast_dir == 'x':
+            a1_arr = append(a1_arr[0],a1_arr)
+            a2_arr = append(a2_arr[0],a2_arr)
+        else:
+            temp = copy(a2_arr)
+            a2_arr = append(a1_arr[0],a1_arr)
+            a1_arr = append(temp[0],temp)
         return append(a1_arr,a2_arr).reshape(2,len(a1_arr))
 
 class FakeDS102():
