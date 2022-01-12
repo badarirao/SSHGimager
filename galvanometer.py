@@ -6,9 +6,8 @@ Notes:
 
 """
 
-from numpy import ones, append, flip, shape, zeros, diff, linspace, array, divide, copy
-from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection, TimeUnits
-from time import time,sleep
+from numpy import ones, append, flip, shape, zeros, diff, array, copy
+from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection
 from nidaqmx import stream_writers, Task
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError

@@ -5,14 +5,12 @@ Created on Thu Oct  7 15:50:23 2021
 @author: Badari
 """
 from datetime import datetime
-from numpy import ones, append, flip, shape, ones, zeros, random
+from numpy import append, flip, shape, ones, zeros, random
 from PyQt5.QtCore import QThread, QEventLoop, QTimer
 from os.path import abspath, join, exists
-from pyvisa import ResourceManager, VisaIOError
 from os import makedirs
 from copy import copy
 from re import sub
-from sys import exit as exitprogram
 from serial import SerialException, SerialTimeoutException
 from nidaqmx.errors import DaqError
 from galvanometer import Scan
@@ -180,6 +178,7 @@ class MonitorStage(QThread):
             while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                 QTimer.singleShot(100, loop.quit)
                 loop.exec_()
+                
 class Dummy():
     def __init__(self):
         pass
@@ -434,6 +433,9 @@ class FakeDS102():
     
     def set_zspeed(self,F=1):
         pass
+    
+    def is_xmoving(self):
+        return 1
 
 def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
                     dated_folder=False, index=True, datetimeformat="%Y-%m-%d"):

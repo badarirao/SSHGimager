@@ -4,10 +4,10 @@ Created on Tue Dec  7 16:23:49 2021
 
 @author: Badari
 """
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from utilities import Select
 from time import sleep
-from numpy import linspace, array, ones, ones_like, zeros, savetxt, flip, append
+from numpy import linspace, array, ones_like, zeros
 import h5py
 import sidpy
 import pyNSID

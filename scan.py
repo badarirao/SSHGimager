@@ -62,7 +62,7 @@ from numpy import ones, ndarray, shape,array, VisibleDeprecationWarning
 import os, sys
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QMessageBox, QShortcut
-from PyQt5.QtCore import QThread
+from PyQt5.QtCore import QThread, QTimer
 import pyqtgraph as pg
 from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
@@ -70,7 +70,6 @@ from ds102_settings import ds102setting
 from time import sleep
 from utilities import checkInstrument, MonitorStage, Select
 from Worker import ScanImage
-import h5py, sidpy
 from SciFiReaders import NSIDReader
 import warnings
 
@@ -118,6 +117,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.imageMenu = QtWidgets.QMenu()
         self.selectImage_Button.setMenu(self.imageMenu)
         self.scan_method = 0
+        self.pth = os.getcwd()
         self.autochange = False
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
@@ -155,12 +155,45 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake= True)
     
     def update_screen(self):
-        self.pth = os.path.dirname(__file__)
         self.galvanodialog = galsetting()
-        os.chdir(self.pth)
         self.galvanodialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.ds102dialog = ds102setting()
         self.ds102dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.initialPath = os.getcwd()
+        if os.path.isfile('address.txt'):
+            with open('address.txt','r') as f:
+                lines = f.readlines()
+                if len(lines) > 0:
+                    try:
+                        self.data_address = lines[1]
+                    except:
+                        self.data_address = ''
+            if self.data_address and os.path.isdir(self.data_address):
+                    os.chdir(self.data_address)
+            else:
+                # set default path to store measured data as desktop
+                self.defaultPath = os.path.join(
+                    os.path.expandvars("%userprofile%"), "Desktop")
+                # set default path as current directory if desktop is not found in C drive
+                if not os.path.exists(self.defaultPath):
+                    self.defaultPath = self.initialPath 
+                self.defaultPath += '\\SHG_Data'
+                if len(lines)>1:
+                    lines[-1] = self.defaultPath
+                else:
+                    lines.append(self.defaultPath)
+                with open('address.txt','w') as f:
+                    f.writelines(lines)
+                if os.path.exists(self.defaultPath):
+                    os.chdir(self.defaultPath)
+                else:
+                    os.makedirs(self.defaultPath)
+                    os.chdir(self.defaultPath)
+        else:
+            print('address.txt not found.')
+            print(' Create address.txt in the program location')
+            print('1st line should contain path of setting file')
+            print('2nd line should contain path of save directory')
         style1 = {'color':'y','size':'18pt'}
         style2 = {'color':'r','size':'16pt'}
         self.liveplot.ui.menuBtn.hide()
@@ -193,10 +226,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ref_plot1d.getAxis("bottom").setLabel('',units='',**labelStyle)
         self.ref_plot1d.getAxis("left").setLabel('',units='',**labelStyle)
         self.scanNum = 0
-        #self.liveplot1d.setLabel('left','Intensity (counts)',**style1)
-        #self.liveplot1d.setLabel('bottom','X (μm)',**style1)
-        #self.ref_plot1d.setLabel('left','Intensity (counts)',**style1)
-        #self.ref_plot1d.setLabel('bottom','X (μm)',**style1)
         labels={'bottom': ("X",'μm'), 'left':("Y",'μm'),'top':"",'right':""}
         self.liveplot.view.setLabels(**labels)
         self.ref_plot.view.setLabels(**labels)
@@ -212,10 +241,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.start_button.clicked.connect(self.run_program)
         self.stop_button.clicked.connect(self.stop_program)
         self.loadImage_button.clicked.connect(self.load_image_from_file)
+        self.stageStop_Button.clicked.connect(self.stopStage)
+        self.saveDir_button.clicked.connect(self.change_save_directory)
         self.imageMenu.triggered.connect(self.get_image_from_collection)
         self.select_scan_area.setCheckable(True)
         self.select_scan_area.clicked.connect(self.hideroiplot)
-        #self.actionSave.triggered.connect(self.save_imagefile)
         self.actionGalvanometer.triggered.connect(self.setgalvano)
         self.actionSteppermotor.triggered.connect(self.setstage)
         self.xstep.valueChanged.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
@@ -237,6 +267,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ref_plot.ui.roiBtn.clicked.connect(self.chkselbutton)
         self.liveplot.view.scene().sigMouseMoved.connect(self.printliveplot_MousePos)
         self.ref_plot.view.scene().sigMouseMoved.connect(self.printrefplot_MousePos)
+        self.liveplot.ui.roiBtn.hide()
         self.scan_mode.setEnabled(False)  # currently disable selecting scan mode
         self.sample_name.setText(self.filename)
         self.sample_name.textChanged.connect(self.updatefile)
@@ -282,25 +313,54 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ypoints.setReadOnly(True)
         self.zpoints.setReadOnly(True)
     
-    def gohome_xstage(self):
-        self.stageX.setValue(self.ds102dialog.xhome)
+    def hide_stageStop_Button(self):
+        self.stageStop_Button.setEnabled(False)
+        
+    def stopStage(self):
+        self.Stage.stop_allstage()
+        self.stageStop_Button.setEnabled(False)
+        self.stageX.setValue(self.Stage.x)
+        self.stageY.setValue(self.Stage.y)
+        self.stageZ.setValue(self.Stage.z)
     
+    def checkStage(self):
+        if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            QTimer.singleShot(100, self.checkStage)
+        else:
+            self.stageStop_Button.setEnabled(False)
+        
+    def gohome_xstage(self):
+        self.stageStop_Button.setEnabled(True)
+        self.stageX.setValue(self.ds102dialog.xhome)
+        self.checkStage()
+        
     def gohome_ystage(self):
+        self.stageStop_Button.setEnabled(True)
         self.stageY.setValue(self.ds102dialog.yhome)
+        self.checkStage()
     
     def gohome_zstage(self):
+        self.stageStop_Button.setEnabled(True)
         self.stageZ.setValue(self.ds102dialog.zhome)
+        self.checkStage()
         
     def updateXstage(self):
+        self.stageStop_Button.setEnabled(True)
         self.Stage.x = self.stageX.value()
+        self.checkStage()
     
     def updateYstage(self):
+        self.stageStop_Button.setEnabled(True)
         self.Stage.y = self.stageY.value()
+        self.checkStage()
         
     def updateZstage(self):
+        self.stageStop_Button.setEnabled(True)
         self.Stage.z = self.stageZ.value()
+        self.checkStage()
         
     def updatefile(self):
+        self.stageStop_Button.setEnabled(True)
         self.filename = self.sample_name.text().split('_')[0]
                 
     def chkselbutton(self):
@@ -309,21 +369,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ref_plot.roi.rotateAllowed = True
             self.ref_plot.roi.addRotateHandle([0, 0], [0.5, 0.5])
             
-    def promptSave_imagefiles(self):
-        options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog
-        self.filename, _ = QtWidgets.QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Parameter Files (*.txt)", options=options)
-        if self.filename:
-            curpth = os.getcwd()
-            os.chdir(self.pth)
-            with open('address.txt','r') as f:
-                lines = f.readlines()
-            lines[-1] = os.path.dirname(self.filename)
-            with open('address.txt','w') as f:
-                f.writelines(lines)
-            os.chdir(curpth)
-            self.save_imagefile()
-    
     def printliveplot_MousePos(self,pos):
         position = self.liveplot.view.vb.mapSceneToView(pos)
         mx = position.x()
@@ -719,7 +764,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             hl.addWidget(l)
             inst.exec_()
             #self.ref_plot1d.getPlotItem().setLabels(**labels)
-        print('Scan Type: {0}'.format(Select.scanName(self.scanNum)))
         
     def setgalvano(self):
         if self.galvanodialog.exec_():
@@ -777,8 +821,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.rx0,self.rx1 = (0,self.ds102dialog.xmax)
         self.ry0,self.ry1 = (0,self.ds102dialog.ymax)
         self.rimg = -ones((400,400))
-        for i in range(10):
-            self.rimg[20+i,30:100] = 10
         self.rxscale, self.ryscale = (self.rx1-self.rx0)/self.rimg.shape[0],(self.ry1-self.ry0)/self.rimg.shape[1]
         self.ref_plot.setImage(self.rimg,pos=[self.rx0,self.ry0],scale=[self.rxscale,self.ryscale])
 
@@ -800,6 +842,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         stageStatus = MonitorStage(self.Stage)
         stageStatus.start()
         stageStatus.finished.connect(info.hide)
+        stageStatus.finished.connect(stageStatus.deleteLater)
         info.exec()
     
     def get_savefilename(self):
@@ -823,9 +866,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         
     def run_program(self):
         self.initialize()
+        print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
         self.scan_type.setEnabled(False)
+        self.stageStop_Button.setEnabled(False)
         self.stopcall = False
         self.get_savefilename()
         self.draw_original_PlotType_menu()
@@ -930,6 +975,20 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.image = self.image.round(decimals = 6)
         self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],xvals = self.zarr)
     
+    def change_save_directory(self):
+        folderpath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Folder')
+        if folderpath:
+            os.chdir(self.pth)
+            with open('address.txt','r') as f:
+                lines = f.readlines()
+            if len(lines)>1:
+                lines[-1] = folderpath
+            else:
+                lines.append(folderpath)
+            with open('address.txt','w') as f:
+                f.writelines(lines)
+            os.chdir(folderpath)
+        
     def load_image_from_file(self):
         options = QtWidgets.QFileDialog.Options()
         options |= QtWidgets.QFileDialog.DontUseNativeDialog
@@ -1101,6 +1160,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.loadData(dataSet)
         if len(dataSet) > 4:
             self.redraw_PlotType_menu()
+        self.stageX.setValue(self.Stage.x)
+        self.stageY.setValue(self.Stage.y)
+        self.stageZ.setValue(self.Stage.z)
         
     def x_state_change(self):
         if self.xactive.isChecked():
