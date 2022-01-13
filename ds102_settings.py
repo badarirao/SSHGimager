@@ -57,6 +57,44 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         self.okayButton.clicked.connect(self.okay_ds102setting)
         
     def setAsDefault(self):
+        self.xscale = self.p.child('X-axis settings').child('Scale').value()
+        self.yscale = self.p.child('Y-axis settings').child('Scale').value()
+        self.zscale = self.p.child('Z-axis settings').child('Scale').value()
+        self.xmax = self.p.child('X-axis settings').child('Max (μm)').value()
+        self.xmin = self.p.child('X-axis settings').child('Min (μm)').value()
+        self.ymax = self.p.child('Y-axis settings').child('Max (μm)').value()
+        self.ymin = self.p.child('Y-axis settings').child('Min (μm)').value()
+        self.zmax = self.p.child('Z-axis settings').child('Max (μm)').value()
+        self.zmin = self.p.child('Z-axis settings').child('Min (μm)').value()
+        self.xspeed = self.p.child('X-axis settings').child('Current speed (pps)').value()
+        self.xscanspeed = self.p.child('X-axis settings').child('Scanning speed (pps)').value()
+        self.yspeed = self.p.child('Y-axis settings').child('Current speed (pps)').value()
+        self.yscanspeed = self.p.child('Y-axis settings').child('Scanning speed (pps)').value()
+        self.zspeed = self.p.child('Z-axis settings').child('Current speed (pps)').value()
+        self.zscanspeed = self.p.child('Z-axis settings').child('Scanning speed (pps)').value()
+        self.xhome = self.p.child('X-axis settings').child('Home Position').value()
+        self.yhome = self.p.child('Y-axis settings').child('Home Position').value()
+        self.zhome = self.p.child('Z-axis settings').child('Home Position').value()
+        self.com = self.p.child('Other settings and device information').child('Address').value()
+        self.p.child('X-axis settings').child('Scale').setDefault(self.xscale)
+        self.p.child('Y-axis settings').child('Scale').setDefault(self.yscale)
+        self.p.child('Z-axis settings').child('Scale').setDefault(self.zscale)
+        self.p.child('X-axis settings').child('Max (μm)').setDefault(self.xmax)
+        self.p.child('X-axis settings').child('Min (μm)').setDefault(self.xmin)
+        self.p.child('Y-axis settings').child('Max (μm)').setDefault(self.ymax)
+        self.p.child('Y-axis settings').child('Min (μm)').setDefault(self.ymin)
+        self.p.child('Z-axis settings').child('Max (μm)').setDefault(self.zmax)
+        self.p.child('Z-axis settings').child('Min (μm)').setDefault(self.zmin)
+        self.p.child('X-axis settings').child('Current speed (pps)').setDefault(self.xspeed)
+        self.p.child('X-axis settings').child('Scanning speed (pps)').setDefault(self.xscanspeed)
+        self.p.child('Y-axis settings').child('Current speed (pps)').setDefault(self.yspeed)
+        self.p.child('Y-axis settings').child('Scanning speed (pps)').setDefault(self.yscanspeed)
+        self.p.child('Z-axis settings').child('Current speed (pps)').setDefault(self.zspeed)
+        self.p.child('Z-axis settings').child('Scanning speed (pps)').setDefault(self.zscanspeed)
+        self.p.child('X-axis settings').child('Home Position').setDefault(self.xhome)
+        self.p.child('Y-axis settings').child('Home Position').setDefault(self.yhome)
+        self.p.child('Z-axis settings').child('Home Position').setDefault(self.zhome)
+        self.p.child('Other settings and device information').child('Address').setDefault(self.com)
         params = {}
         params['xscale'] = self.xscale
         params['yscale'] = self.yscale
@@ -77,58 +115,81 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         params['yhome'] = self.yhome
         params['zhome'] = self.zhome
         params['address'] = self.com
+        
         pth = os.getcwd()
         os.chdir(self.setting_address)
         with open(self.filename,'r') as f:
             lines = f.readlines()
         for i,line in enumerate(lines):
-            if line == "End of Galvanometer settings.":
+            if line == "End of Galvanometer settings.\n":
                 lines = lines[:i+1]
-            lines.append('\n')
-            lines.append('DS102 Settings\n')
-            for key, value in params.items():
-                lines.append('{0} - {1}\n'.format(key,value))
-            lines.append("End of DS102 settings.")
+                break
+        lines.append('\n')
+        lines.append('DS102 Settings\n')
+        for key, value in params.items():
+            lines.append('{0} - {1}\n'.format(key,value))
+        lines.append("End of DS102 settings.")
         with open(self.filename,'w') as f:
             f.writelines(lines)
         os.chdir(pth)
         
     def goDefault(self):
+        """
         pth = os.getcwd()
+        os.chdir(self.setting_address)
         with open('address.txt','r') as f:
             self.setting_address = f.readline().rstrip()
-        os.chdir(self.setting_address)
         params = {}
         with open(self.filename,'r') as file:
             lines = file.readlines()
             if len(lines) >=32:
-                slines = lines[13:32]
+                slines = lines[12:31]
                 for line in slines:
                     lp = line.split()
                     if lp[0] == 'address':
                         params[lp[0]] = lp[2]
                     else:
                         params[lp[0]] = int(lp[2])
-                self.xscale = params['xscale']
-                self.yscale = params['yscale']
-                self.zscale = params['zscale']
-                self.xmax = params['xmax']
-                self.xmin = params['xmin']
-                self.ymax = params['ymax']
-                self.ymin = params['ymin']
-                self.zmax = params['zmax']
-                self.zmin = params['zmin']
-                self.xspeed = params['xspeed']
-                self.xscanspeed = params['xscanspeed']
-                self.yspeed = params['yspeed']
-                self.yscanspeed = params['yscanspeed']
-                self.zspeed = params['zspeed']
-                self.zscanspeed = params['zscanspeed']
-                self.xhome = params['xhome']
-                self.yhome = params['yhome']
-                self.zhome = params['zhome']
-                self.com = params['address']
+                self.p.child('X-axis settings').child('Scale').setValue(params['xscale'])
+                self.p.child('Y-axis settings').child('Scale').setValue(params['yscale'])
+                self.p.child('Z-axis settings').child('Scale').setValue(params['zscale'])
+                self.p.child('X-axis settings').child('Max (μm)').setValue(params['xmax'])
+                self.p.child('X-axis settings').child('Min (μm)').setValue(params['xmin'])
+                self.p.child('Y-axis settings').child('Max (μm)').setValue(params['ymax'])
+                self.p.child('Y-axis settings').child('Min (μm)').setValue(params['ymin'])
+                self.p.child('Z-axis settings').child('Max (μm)').setValue(params['zmax'])
+                self.p.child('Z-axis settings').child('Min (μm)').setValue(params['zmin'])
+                self.p.child('X-axis settings').child('Current speed (pps)').setValue(params['xspeed'])
+                self.p.child('X-axis settings').child('Scanning speed (pps)').setValue(params['xscanspeed'])
+                self.p.child('Y-axis settings').child('Current speed (pps)').setValue(params['yspeed'])
+                self.p.child('Y-axis settings').child('Scanning speed (pps)').setValue(params['yscanspeed'])
+                self.p.child('Z-axis settings').child('Current speed (pps)').setValue(params['zspeed'])
+                self.p.child('Z-axis settings').child('Scanning speed (pps)').setValue(params['zscanspeed'])
+                self.p.child('X-axis settings').child('Home Position').setValue(params['xhome'])
+                self.p.child('Y-axis settings').child('Home Position').setValue(params['yhome'])
+                self.p.child('Z-axis settings').child('Home Position').setValue(params['zhome'])
+                self.p.child('Other settings and device information').child('Address').setValue(params['address'])
         os.chdir(pth)
+        """
+        self.p.child('X-axis settings').child('Scale').setToDefault()
+        self.p.child('Y-axis settings').child('Scale').setToDefault()
+        self.p.child('Z-axis settings').child('Scale').setToDefault()
+        self.p.child('X-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('X-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('Y-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('Y-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('Z-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('Z-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('X-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('X-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('Y-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('Y-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('Z-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('Z-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('X-axis settings').child('Home Position').setToDefault()
+        self.p.child('Y-axis settings').child('Home Position').setToDefault()
+        self.p.child('Z-axis settings').child('Home Position').setToDefault()
+        self.p.child('Other settings and device information').child('Address').setToDefault()
     
     def load_parameters_from_file(self):
         pth = os.getcwd()
@@ -140,7 +201,7 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             with open(self.filename,'r') as file:
                 lines = file.readlines()
                 if len(lines) >= 32:
-                    slines = lines[13:32]
+                    slines = lines[12:31]
                     for line in slines:
                         lp = line.split()
                         if lp[0] == 'address':
@@ -205,20 +266,21 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             params['yscanspeed'] = self.yscanspeed
             params['zspeed'] = self.zspeed
             params['zscanspeed'] = self.zscanspeed
-            self.xhome = params['xhome']
-            self.yhome = params['yhome']
-            self.zhome = params['zhome']
-            self.com = params['address']
+            params['xhome'] = self.xhome
+            params['yhome'] = self.yhome
+            params['zhome'] = self.zhome
+            params['address'] = self.com
             with open(self.filename,'r') as f:
                 lines = f.readlines()
             for i,line in enumerate(lines):
                 if line == "End of Galvanometer settings.":
                     lines = lines[:i+1]
-                lines.append('\n')
-                lines.append('DS102 Settings\n')
-                for key, value in params.items():
-                    lines.append('{0} - {1}\n'.format(key,value))
-                lines.append("End of DS102 settings.")
+                    break
+            lines.append('\n\n')
+            lines.append('DS102 Settings\n')
+            for key, value in params.items():
+                lines.append('{0} - {1}\n'.format(key,value))
+            lines.append("End of DS102 settings.")
             with open(self.filename,'w') as f:
                 f.writelines(lines)
         os.chdir(pth)
