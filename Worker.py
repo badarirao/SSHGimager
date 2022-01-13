@@ -88,9 +88,14 @@ class ScanImage(QObject):
         self.stopCall = True
     
     def saveData(self):
-        self.xarr = array(self.xarr)
-        self.yarr = array(self.yarr)
-        self.zarr = array(self.zarr)
+        if self.nd == 1:
+            self.xarr = array(self.xarr[:len(self.shgData)])
+            self.yarr = array(self.yarr[:len(self.shgData)])
+            self.zarr = array(self.zarr[:len(self.shgData)])
+        else:
+            self.xarr = array(self.xarr)
+            self.yarr = array(self.yarr)
+            self.zarr = array(self.zarr)
         xarr = self.xarr
         yarr = self.yarr
         zarr = self.zarr

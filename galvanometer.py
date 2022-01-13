@@ -9,6 +9,7 @@ Notes:
 from numpy import ones, append, flip, shape, zeros, diff, array, copy
 from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection
 from nidaqmx import stream_writers, Task
+from nidaqmx.types import CtrTime
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError
 from nidaqmx.error_codes import DAQmxErrors
@@ -348,12 +349,16 @@ class Scan(Galvano):
         
     def start_single_point_counter(self):
         """
-        self.plsGen.timing.cfg_samp_clk_timing(self.srate,samps_per_chan=2)
+        tstep = 1/self.srate
+        sample = CtrTime(high_time=tstep/2,low_time=tstep/2)
+        self.plsGen.write(sample)
+        self.plsGen.timing.cfg_samp_clk_timing(sample_mode=AcquisitionType.FINITE,samps_per_chan=2)
         self.counter.timing.cfg_samp_clk_timing(self.srate,source='/Dev1/co/SampleClock',\
                                                 sample_mode=AcquisitionType.FINITE,\
                                                 samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
         self.reference.start()
+        # first just try to see if the pulse generator works fine.
         """
         
     

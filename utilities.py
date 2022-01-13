@@ -191,6 +191,9 @@ class Dummy():
     
     def read(self):
         return 1
+    
+    def moving(self):
+        return 0
 
 class FakeDAQ():
     """Provides a fake adapter for debugging purposes.
@@ -425,6 +428,15 @@ class FakeDS102():
             pass
         return method
     
+    def is_xmoving(self):
+        return 0
+    
+    def is_ymoving(self):
+        return 0
+    
+    def is_zmoving(self):
+        return 0
+    
     def set_xspeed(self,F=1):
         pass
     
@@ -434,9 +446,6 @@ class FakeDS102():
     def set_zspeed(self,F=1):
         pass
     
-    def is_xmoving(self):
-        return 1
-
 def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
                     dated_folder=False, index=True, datetimeformat="%Y-%m-%d"):
     """
