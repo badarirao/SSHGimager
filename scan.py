@@ -122,7 +122,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake= True)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com)
         self.functionalize_buttons()
         self.initialize()
         self.initialize_plot()

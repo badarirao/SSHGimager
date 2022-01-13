@@ -127,7 +127,7 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         lines.append('\n')
         lines.append('End of Galvanometer settings.\n')
         for key, value in reversed(params.items()):
-            lines.append('{0} - {1}\n'.format(key,value))
+            lines.append('{0} = {1}\n'.format(key,value))
         lines.append("Galvanometer Settings\n")
         lines.reverse()
         with open(self.filename,'w') as f:
@@ -197,7 +197,7 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
                 with open(self.filename,'w') as f:
                     f.write('Galvanometer Settings\n')
                     for key, value in reversed(params.items()):
-                        f.write('{0} - {1}\n'.format(key,value))
+                        f.write('{0} = {1}\n'.format(key,value))
                     f.write("End of Galvanometer settings.")
             os.chdir(pth)
             

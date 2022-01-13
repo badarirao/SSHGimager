@@ -80,19 +80,19 @@ class DS102(Serial):
                 self.initialize_y()
             if self.read_param('AXIsZ:MEMorySwitch0?') == '0':
                 self.initialize_z()
-            self._x = self.xpos()
-            self._y = self.ypos()
-            self._z = self.zpos()
+            self._x = int(self.xpos())
+            self._y = int(self.ypos())
+            self._z = int(self.zpos())
             self.ID = 'DS102'
         
         def read_param(self,param):
             self.write(bytes(param+'\r','UTF-8'))
-            sleep(0.05)
+            #sleep(0.05)
             return self.read(100).decode('ascii')[:-1]
         
         def write_param(self,param):
             self.write(bytes(param+'\r','UTF-8'))
-            sleep(0.1)
+            #sleep(0.1)
             
         def zpos(self):
             return -int(self.read_param("AXIsZ:Position?"))
@@ -126,8 +126,8 @@ class DS102(Serial):
         def x(self,value):
             if self._x == value:
                 return
-            self._x = value
-            self.write_param("AXIX:GOABS {0}".format(self._x))
+            self._x = int(value)
+            self.write_param("AXIX:GOABS {0}".format(-self._x))
                        
         @property 
         def y(self):
@@ -135,7 +135,7 @@ class DS102(Serial):
         
         @y.setter 
         def y(self,value):
-            if self._y == value:
+            if self._y == int(value):
                 return
             self._y = value
             self.write_param("AXIY:GOABS {0}".format(self._y))
@@ -146,72 +146,72 @@ class DS102(Serial):
         
         @z.setter 
         def z(self,value):
-            self._z = value
-            if self._z == value:
+            if self._z == int(value):
                 return
+            self._z = value
             self.write_param("AXIZ:GOABS {0}".format(-self._z))
         
         def goto_x(self,x):
             self.x = x
-            while self.is_xmoving():
-                pass
+            #while self.is_xmoving():
+            #    pass
         
         def goto_y(self,y):
             self.y = y
-            while self.is_ymoving():
-                pass
+            #while self.is_ymoving():
+            #    pass
         
         def goto_z(self,z):
             self.z = z
-            while self.is_zmoving():
-                pass
+            #while self.is_zmoving():
+            #    pass
 
         def goto_xy(self,x,y):
             if self._x == x and self._y == y:
                 return
-            self.write_param("GOLA X{0} Y{1}".format(x,y))
-            self._x = x
-            self._y = y
-            while self.is_xmoving() or self.is_ymoving():
-                pass
+            self.write_param("GOLA X{0} Y{1}".format(-x,y))
+            self._x = int(x)
+            self._y = int(y)
+            #while self.is_xmoving() or self.is_ymoving():
+            #    pass
         
         def goto_xz(self,x,z):
             if self._x == x and self._z == z:
                 return
-            self.write_param("GOLineA X{0} Z{1}".format(x,-z))
-            self._x = x
-            self._z = z
-            while self.is_xmoving() or self.is_zmoving():
-                pass
+            self.write_param("GOLineA X{0} Z{1}".format(-x,-z))
+            self._x = int(x)
+            self._z = int(z)
+            #while self.is_xmoving() or self.is_zmoving():
+            #    pass
         
         def goto_yz(self,y,z):
             if self._y == y and self._z == z:
                 return
             self.write_param("GOLineA Y{0} Z{1}".format(y,-1*z))
-            self._y = y
-            self._z = z
-            while self.is_ymoving() or self.is_zmoving():
-                pass
+            self._y = int(y)
+            self._z = int(z)
+            #while self.is_ymoving() or self.is_zmoving():
+            #    pass
         
         def goto_xyz(self,x,y,z):
             if self._x == x and self._y == y and self._z == z:
                 return
-            self.write_param("GOLineA X{0} Y{1} Z{2}".format(x,y,-z))
-            self._x = x
-            self._y = y
-            self._z = z
-            while self.is_xmoving() or self.is_ymoving() or self.is_zmoving():
-                pass
+            self.write_param("GOLineA X{0} Y{1} Z{2}".format(-x,y,-z))
+            self._x = int(x)
+            self._y = int(y)
+            self._z = int(z)
+            #while self.is_xmoving() or self.is_ymoving() or self.is_zmoving():
+            #    pass
         
         def gorel_xy(self,x,y):
             if x==0 and y == 0:
                 return
-            self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}".format(x,y))
+            self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}".format(-x,y))
 
         def gorel_xz(self,x,z):
             if x == 0 and z == 0:
                 return
-            self.write_param("AXIsX:PULSe {0}:AXIsZ:PULSe {1}".format(x,-z))
+            self.write_param("AXIsX:PULSe {0}:AXIsZ:PULSe {1}".format(-x,-z))
             
         def gorel_yz(self,y,z):
             if y == 0 and z == 0:
@@ -221,33 +221,43 @@ class DS102(Serial):
         def gorel_xyz(self,x,y,z):
             if x == 0 and y == 0 and z == 0:
                 return
-            self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}:AXIsZ:PULSe {2}".format(x,y,-z))
+            self.write_param("AXIsX:PULSe {0}:AXIsY:PULSe {1}:AXIsZ:PULSe {2}".format(-x,y,-z))
             
         def axis(self,data):
             self.write_param("AXIs{0}".format(data))
+            sleep(0.1)
         
         def set_xlimits(self, west, east):
             self.write_param("AXIsX:CCWSoftLimitPoint {0}:CWSoftLimitPoint {1}".format(west,east))
+            sleep(0.1)
         
         def set_ylimits(self, south, north):
             self.write_param("AXIsY:CCWSoftLimitPoint {0}:CWSoftLimitPoint {1}".format(south,north))
+            sleep(0.1)
         
         def set_zlimits(self, bottom, top):
             self.write_param("AXIsZ:CCWSoftLimitPoint {0}:CWSoftLimitPoint {1}".format(bottom,top))
+            sleep(0.1)
         
         def set_xdist_per_pulse(self,dist = 1):  # dist in micrometer
             self.write_param("AXIsX:STANDARDresolution {0}".format(dist))
+            sleep(0.1)
         
         def set_ydist_per_pulse(self,dist = 1):  # dist in micrometer
             self.write_param("AXIsY:STANDARDresolution {0}".format(dist))
+            sleep(0.1)
         
         def set_zdist_per_pulse(self,dist = 1):  # dist in micrometer
             self.write_param("AXIsZ:STANDARDresolution {0}".format(dist))
+            sleep(0.1)
         
         def set_unit(self,unit):
             self.write_param("AXIsX:UNIT {0}".format(unit))
+            sleep(0.1)
             self.write_param("AXIsY:UNIT {0}".format(unit))
+            sleep(0.1)
             self.write_param("AXIsZ:UNIT {0}".format(unit))
+            sleep(0.1)
         
         def set_driver_division(self, xres=1, yres=1, zres=1):
             xres = get_valid_drive(xres)
@@ -256,41 +266,54 @@ class DS102(Serial):
             self.write_param("AXIsX:DriverDIVsion {0}: \
                               AXIsY:DriverDivision {1}; \
                               AxisZ:DirverDIVision {2}".format(xres,yres,zres))
+            sleep(0.1)
         
         
         
         def set_xspeed(self,L=10,F=100,R=10,S=100):
             self.write_param("Lspeed0 {0}:Fspeed0 {1}: Rate0 {2}: Srate0{3}".format(L,F,R,S))
+            sleep(0.2)
+        
+        def get_xspeed(self):
+            return int(self.read_param('Fspeed0?'))
+        
+        def get_yspeed(self):
+            return int(self.read_param('Fspeed1?'))
+        
+        def get_zspeed(self):
+            return int(self.read_param('Fspeed2?'))
         
         def set_yspeed(self,L=10,F=100,R=10,S=100):
             self.write_param("Lspeed1 {0}:Fspeed1 {1}: Rate1 {2}: Srate1{3}".format(L,F,R,S))
+            sleep(0.2)
         
         def set_zspeed(self,L=10,F=100,R=10,S=100):
             self.write_param("Lspeed2 {0}:Fspeed2 {1}: Rate2 {2}: Srate2{3}".format(L,F,R,S))
+            sleep(0.2)
         
         def stop_xstage(self):
             self.write_param("AXIsX:STOP 1")
-            self._x = self.xpos()
+            self._x = int(self.xpos())
         
         def stop_ystage(self):
             self.write_param("AXIsY:STOP 1")
-            self._y = self.ypos()
+            self._y = int(self.ypos())
         
         def stop_zstage(self):
             self.write_param("AXIsZ:STOP 1")
-            self._z = self.zpos()
+            self._z = int(self.zpos())
         
         def stop_allstage(self):
             self.write_param("AXIsX:STOP 1:AXIsY:STOP 1:AXIsZ:STOP 1")
-            self._x = self.xpos()
-            self._y = self.ypos()
-            self._z = self.zpos()
+            self._x = int(self.xpos())
+            self._y = int(self.ypos())
+            self._z = int(self.zpos())
         
         def emergency_stop(self):
             self.write_param("AXIsX:STOP 0:AXIsY:STOP 0:AXIsZ:STOP 0")
-            self._x = self.xpos()
-            self._y = self.ypos()
-            self._z = self.zpos()
+            self._x = int(self.xpos())
+            self._y = int(self.ypos())
+            self._z = int(self.zpos())
         
         def get_xlimits(self):
             east = self.read_param("AXIsX:CWSoftLimitPoint?")
@@ -331,9 +354,9 @@ class DS102(Serial):
         
         def get_pos(self):
             return self.xpos(),self.ypos(),self.zpos()
-            self._x = self.xpos()
-            self._y = self.ypos()
-            self._z = self.zpos()
+            self._x = int(self.xpos())
+            self._y = int(self.ypos())
+            self._z = int(self.zpos())
         
         def get_dist_per_pulse(self):
             xres = self.read_param("AXIsX:RESOLUTion?")

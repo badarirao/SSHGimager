@@ -127,50 +127,13 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         lines.append('\n')
         lines.append('DS102 Settings\n')
         for key, value in params.items():
-            lines.append('{0} - {1}\n'.format(key,value))
+            lines.append('{0} = {1}\n'.format(key,value))
         lines.append("End of DS102 settings.")
         with open(self.filename,'w') as f:
             f.writelines(lines)
         os.chdir(pth)
         
     def goDefault(self):
-        """
-        pth = os.getcwd()
-        os.chdir(self.setting_address)
-        with open('address.txt','r') as f:
-            self.setting_address = f.readline().rstrip()
-        params = {}
-        with open(self.filename,'r') as file:
-            lines = file.readlines()
-            if len(lines) >=32:
-                slines = lines[12:31]
-                for line in slines:
-                    lp = line.split()
-                    if lp[0] == 'address':
-                        params[lp[0]] = lp[2]
-                    else:
-                        params[lp[0]] = int(lp[2])
-                self.p.child('X-axis settings').child('Scale').setValue(params['xscale'])
-                self.p.child('Y-axis settings').child('Scale').setValue(params['yscale'])
-                self.p.child('Z-axis settings').child('Scale').setValue(params['zscale'])
-                self.p.child('X-axis settings').child('Max (μm)').setValue(params['xmax'])
-                self.p.child('X-axis settings').child('Min (μm)').setValue(params['xmin'])
-                self.p.child('Y-axis settings').child('Max (μm)').setValue(params['ymax'])
-                self.p.child('Y-axis settings').child('Min (μm)').setValue(params['ymin'])
-                self.p.child('Z-axis settings').child('Max (μm)').setValue(params['zmax'])
-                self.p.child('Z-axis settings').child('Min (μm)').setValue(params['zmin'])
-                self.p.child('X-axis settings').child('Current speed (pps)').setValue(params['xspeed'])
-                self.p.child('X-axis settings').child('Scanning speed (pps)').setValue(params['xscanspeed'])
-                self.p.child('Y-axis settings').child('Current speed (pps)').setValue(params['yspeed'])
-                self.p.child('Y-axis settings').child('Scanning speed (pps)').setValue(params['yscanspeed'])
-                self.p.child('Z-axis settings').child('Current speed (pps)').setValue(params['zspeed'])
-                self.p.child('Z-axis settings').child('Scanning speed (pps)').setValue(params['zscanspeed'])
-                self.p.child('X-axis settings').child('Home Position').setValue(params['xhome'])
-                self.p.child('Y-axis settings').child('Home Position').setValue(params['yhome'])
-                self.p.child('Z-axis settings').child('Home Position').setValue(params['zhome'])
-                self.p.child('Other settings and device information').child('Address').setValue(params['address'])
-        os.chdir(pth)
-        """
         self.p.child('X-axis settings').child('Scale').setToDefault()
         self.p.child('Y-axis settings').child('Scale').setToDefault()
         self.p.child('Z-axis settings').child('Scale').setToDefault()
@@ -279,7 +242,7 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             lines.append('\n\n')
             lines.append('DS102 Settings\n')
             for key, value in params.items():
-                lines.append('{0} - {1}\n'.format(key,value))
+                lines.append('{0} = {1}\n'.format(key,value))
             lines.append("End of DS102 settings.")
             with open(self.filename,'w') as f:
                 f.writelines(lines)
