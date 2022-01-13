@@ -13,6 +13,8 @@ from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError
 from nidaqmx.error_codes import DAQmxErrors
 from time import sleep
+from PyQt5.QtCore import QTimer, QEventLoop
+from PyQt5.QtCore import Qt
 
 class Galvano():
     def __init__(self,daq='Dev1/',aochan='ao0:1'):
@@ -361,7 +363,9 @@ class Scan(Galvano):
         refV = 1
         self.counter.start()
         self.reference.start()
-        sleep(1/self.srate)
+        loop = QEventLoop()
+        QTimer.singleShot(1/self.srate, Qt.PreciseTimer, loop.quit)
+        #sleep(1/self.srate)
         counts = self.counter.read()
         refV = self.reference.read()*1000000
         self.counter.stop()
@@ -393,7 +397,7 @@ class Scan(Galvano):
         self.taskxy.close()
         self.counter.close()
         self.reference.close()
-        self.plsGen.stop()
+        self.plsGen.close()
         print('Executed gal close all channels')
                   
     def __del__(self):

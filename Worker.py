@@ -373,6 +373,7 @@ class ScanImage(QObject):
             pyNSID.hdf_io.write_nsid_dataset(imgData2, hf['Processed Data'], main_data_name="PROCESSED Retrace")
             pyNSID.hdf_io.write_nsid_dataset(refData2, hf['Reference Data'], main_data_name="REFERENCE Retrace")
         else:
+            pass
             pyNSID.hdf_io.write_nsid_dataset(shgData, hf['Raw Data'], main_data_name="RAW SHG")
             pyNSID.hdf_io.write_nsid_dataset(imgData, hf['Processed Data'], main_data_name="PROCESSED")
             pyNSID.hdf_io.write_nsid_dataset(refData, hf['Reference Data'], main_data_name="REFERENCE")
@@ -567,8 +568,8 @@ class ScanImage(QObject):
         self.Gal.start_single_point_counter()
         for i,q in enumerate(arr):
             goto(q)
-            while stage_is_moving():
-                pass
+            #while stage_is_moving():
+            #    pass
             c,r = self.Gal.readCounts()
             img = c/r
             lData.append(q)
