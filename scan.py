@@ -777,10 +777,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.Gal.xhome = self.galvanodialog.xpos
         self.Gal.yhome = self.galvanodialog.ypos
         if self.scan_type.currentIndex() == 0:
-            self.xpos.setMaximum(self.galvanodialog.xmax)
-            self.ypos.setMaximum(self.galvanodialog.ymax)
-            self.xpos.setMinimum(self.galvanodialog.xmin)
-            self.ypos.setMinimum(self.galvanodialog.ymin)
             self.update_sizelimits()
 
     def update_sizelimits(self):
@@ -789,8 +785,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.xsize.setMaximum(self.ds102dialog.xmax-self.xpos.value())
             self.ysize.setMaximum(self.ds102dialog.ymax-self.ypos.value())
         else:
-            self.xsize.setMaximum(self.galvanodialog.xmax-self.xpos.value())
-            self.ysize.setMaximum(self.galvanodialog.ymax-self.ypos.value())
+            self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
+            self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             
     def setstage(self):
         if self.ds102dialog.exec_() == QtWidgets.QDialog.Accepted:
@@ -816,12 +812,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.Stage.yhome = self.ds102dialog.yhome
         self.Stage.zhome = self.ds102dialog.zhome
         self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-        if self.scan_type.currentIndex() == 1:
-            self.xpos.setMaximum(self.ds102dialog.xmax)
-            self.xpos.setMinimum(self.ds102dialog.xmin)
-            self.ypos.setMaximum(self.ds102dialog.ymax)
-            self.ypos.setMinimum(self.ds102dialog.ymin)
-            self.update_sizelimits()
+        self.xpos.setMaximum(self.ds102dialog.xmax)
+        self.xpos.setMinimum(self.ds102dialog.xmin)
+        self.ypos.setMaximum(self.ds102dialog.ymax)
+        self.ypos.setMinimum(self.ds102dialog.ymin)
+        self.update_sizelimits()
             
     def initialize_plot(self):
         self.rx0,self.rx1 = (0,self.ds102dialog.xmax)
@@ -1243,17 +1238,17 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.srate_set.setEnabled(True)
             self.tperstep_set.setEnabled(False)
             self.xstep.setMinimum(0.0001)
-            self.xstep.setMaximum(self.galvanodialog.xmax)
+            self.xstep.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.xstep.setDecimals(4)
             self.xstep.setSingleStep(0.01)
             self.ystep.setMinimum(0.0001)
-            self.ystep.setMaximum(self.galvanodialog.ymax)
+            self.ystep.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             self.ystep.setDecimals(4)
             self.ystep.setSingleStep(0.01)
-            self.xsize.setMaximum(self.galvanodialog.xmax)
+            self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.xsize.setDecimals(4)
             self.xsize.setSingleStep(0.1)
-            self.ysize.setMaximum(self.galvanodialog.ymax)
+            self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             self.ysize.setDecimals(4)
             self.ysize.setSingleStep(0.1)
     

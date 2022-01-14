@@ -5,6 +5,7 @@ Created on Fri Feb 19 16:12:32 2021
 @author: Badari
 
 TO DO:
+    #TODO update mechanical limits, since x and z stage signs were changed
     
     Make sure the current speed and home position settings are within the given max, min limits
 """

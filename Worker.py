@@ -483,14 +483,16 @@ class ScanImage(QObject):
             self.ZX_Scan_Step_Stage()
         elif self.scanNum == Select.XY_Scan_Continuous_Galvano:
             self.initialData.emit(['2D XY-scan using Laser', 'x (μm)','y (μm)',self.xscale,self.yscale])
-            self.xarr = linspace(-self.xsize/2,self.xsize/2,self.xpoints)
-            self.yarr = linspace(-self.ysize/2,self.ysize/2,self.ypoints)
-            self.Gal.x = self.xarr[0]+self.Gal.xhome
-            self.Gal.y = self.yarr[0]+self.Gal.yhome
-            self.Gal.srate = self.srate
-            self.XY_Scan_Continuous_Galvano()
+            self.xarr = linspace(-self.xsize/2+self.Gal.xhome,self.xsize/2+self.Gal.xhome,self.xpoints)
+            self.yarr = linspace(-self.ysize/2+self.Gal.yhome,self.ysize/2+self.Gal.yhome,self.ypoints)
             self.Gal.x = self.Gal.xhome
             self.Gal.y = self.Gal.yhome
+            self.Stage.x = self.xpos
+            self.Stage.y = self.ypos
+            self.Gal.srate = self.srate
+            while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                pass
+            self.XY_Scan_Continuous_Galvano()
         elif self.scanNum == Select.XY_Scan_Step_Galvano:
             pass
         elif self.scanNum == Select.XY_Scan_Continuous_Stage:
@@ -503,14 +505,16 @@ class ScanImage(QObject):
             self.XY_Scan_Step_Stage()
         elif self.scanNum == Select.YX_Scan_Continuous_Galvano:
             self.initialData.emit(['2D YX-scan using Laser', 'x (μm)','y (μm)',self.xscale,self.yscale])
-            self.xarr = linspace(-self.xsize/2,self.xsize/2,self.xpoints)
-            self.yarr = linspace(-self.ysize/2,self.ysize/2,self.ypoints)
-            self.Gal.x = self.xarr[0]+self.Gal.xhome
-            self.Gal.y = self.yarr[0]+self.Gal.yhome
+            self.xarr = linspace(-self.xsize/2+self.Gal.xhome,self.xsize/2+self.Gal.xhome,self.xpoints)
+            self.yarr = linspace(-self.ysize/2+self.Gal.yhome,self.ysize/2+self.Gal.yhome,self.ypoints)
             self.Gal.srate = self.srate
-            self.YX_Scan_Continuous_Galvano()
             self.Gal.x = self.Gal.xhome
             self.Gal.y = self.Gal.yhome
+            self.Stage.x = self.xpos
+            self.Stage.y = self.ypos
+            while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                pass
+            self.YX_Scan_Continuous_Galvano()
         elif self.scanNum == Select.YX_Scan_Step_Galvano:
             pass
         elif self.scanNum == Select.YX_Scan_Continuous_Stage:
