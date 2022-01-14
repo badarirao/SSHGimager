@@ -80,6 +80,12 @@ class DS102(Serial):
                 self.initialize_y()
             if self.read_param('AXIsZ:MEMorySwitch0?') == '0':
                 self.initialize_z()
+            self.xscale = 1
+            self.yscale = 1
+            self.zscale = 1
+            self.xhome = 0
+            self.yhome = 0
+            self.zhome = 0
             self._x = int(self.xpos())
             self._y = int(self.ypos())
             self._z = int(self.zpos())

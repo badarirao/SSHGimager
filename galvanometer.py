@@ -8,7 +8,7 @@ Notes:
 
 from numpy import ones, append, flip, shape, zeros, diff, array, copy
 from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection
-from nidaqmx import stream_writers, Task
+from nidaqmx import stream_writers, Task, stream_readers
 from nidaqmx.types import CtrTime
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError
@@ -43,6 +43,10 @@ class Galvano():
     def create_taskxy(self):
         self.taskxy = Task()
         self.taskxy.ao_channels.add_ao_voltage_chan(self.ao_chan)
+    
+    def create_taskx(self):
+        self.taskx = Task()
+        self.taskx.ao_channels.add_ao_voltage_chan("Dev1/ao0")
         
     def set_xscan_param(self,nx=100,xmin=-10,xmax=10):
         self.nx = nx
@@ -98,11 +102,11 @@ class Galvano():
     
     @property 
     def x(self):
-        return self._x*self.xscale
+        return self._x/self.xscale
     
     @x.setter 
     def x(self,value):
-        self._x = value/self.xscale
+        self._x = value*self.xscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -115,11 +119,11 @@ class Galvano():
              
     @property 
     def y(self):
-        return self._y*self.yscale
+        return self._y/self.yscale
     
     @y.setter
     def y(self,value):
-        self._y = value/self.yscale
+        self._y = value*self.yscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -131,8 +135,8 @@ class Galvano():
             self.taskxy.write([self._y,self._x])
         
     def gotoxy(self,x,y):
-        self._x = x/self.xscale
-        self._y = y/self.yscale
+        self._x = x*self.xscale
+        self._y = y*self.yscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -197,7 +201,6 @@ class Scan(Galvano):
         self.s_clock_chan = '/' + daq + s_clock
         self.create_ctr()
         self.create_ref()
-        self.create_pulsegen()
         self.img_Processed = zeros(10)
         self.img_dataSHG = zeros(10)
         self.img_dataRef = zeros(10)
@@ -218,21 +221,7 @@ class Scan(Galvano):
             except Exception as e:
                 print(e)
                 raise DaqError
-        
-    def create_pulsegen(self):
-        try:
-            self.plsGen.close()
-        except (DaqError, AttributeError):
-            pass
-        finally:
-            try:
-                self.plsGen = Task('PulseGenerator')
-                self.plsGen.co_channels.add_co_pulse_chan_time('Dev1/ctr1')
-                self.plsGen.channels.co_pulse_term = '/Dev1/PFI3'
-            except Exception as e:
-                print(e)
-                raise DaqError
-        
+            
     def create_ref(self):
         try:
             self.reference.close()
@@ -252,8 +241,8 @@ class Scan(Galvano):
     def start_scanxy(self,xarr,yarr,retrace=2):
         self.startscan = True
         self.retrace = retrace
-        self.xarr = xarr/self.xscale + self.xhome
-        self.yarr = yarr/self.yscale + self.yhome
+        self.xarr = xarr*self.xscale + self.xhome
+        self.yarr = yarr*self.yscale + self.yhome
         self.i = 0
         t = 10 # default timeout = 10 seconds
         sample = self.getxyarray(self.xarr,self.yarr,retrace)
@@ -348,22 +337,30 @@ class Scan(Galvano):
         print('Executed gal stop scanxy')
         
     def start_single_point_counter(self):
-        """
-        tstep = 1/self.srate
-        sample = CtrTime(high_time=tstep/2,low_time=tstep/2)
-        self.plsGen.write(sample)
-        self.plsGen.timing.cfg_samp_clk_timing(sample_mode=AcquisitionType.FINITE,samps_per_chan=2)
-        self.counter.timing.cfg_samp_clk_timing(self.srate,source='/Dev1/co/SampleClock',\
+        try:
+            self.taskxy.close()
+        except:
+            pass
+        self.create_taskx()
+        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate+1, \
+                                               sample_mode = AcquisitionType.FINITE, \
+                                                   samps_per_chan = 2)
+        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate, \
+                                               sample_mode = AcquisitionType.FINITE,\
+                                                   samps_per_chan=2)
+        self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",\
                                                 sample_mode=AcquisitionType.FINITE,\
-                                                samps_per_chan=2)
+                                                    samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
+        writer = stream_writers.AnalogSingleChannelWriter(self.taskx.out_stream)
+        data = array((self.x,self.x),dtype=float)
+        writer.write_many_sample(data)
         self.reference.start()
         # first just try to see if the pulse generator works fine.
-        """
-        
     
     def readCounts(self):
         # TODO check if counter works properly
+        """
         counts = 0
         refV = 1
         self.counter.start()
@@ -379,40 +376,40 @@ class Scan(Galvano):
         """
         counts = 0
         refV = 1
-        self.plsGen.start()
         self.counter.start()
+        self.taskx.start()
         while not self.counter.is_task_done():
             pass
-        counts = array(self.counter.read(number_of_samples_per_channel = 2),dtype=float)
+        counts = diff(array(self.counter.read(number_of_samples_per_channel = READ_ALL_AVAILABLE),dtype=float))
         refV = 1000000*self.reference.read()
         if refV < 1000:
             refV = 1
         self.counter.stop()
-        self.plsGen.stop()
-        return counts,refV
-        """
+        self.taskx.stop()
+        return counts[0],refV
 
     def stop_single_point_counter(self):
         self.counter.stop()
         self.reference.stop()
         self.create_ref()
-        self.plsGen.stop()
+        self.taskx.close()
+        self.create_taskxy()
         
     def close_all_channels(self):
         self.taskxy.close()
         self.counter.close()
         self.reference.close()
-        self.plsGen.close()
-        print('Executed gal close all channels')
                   
+    """
     def __del__(self):
         try:
             self.taskxy.close()
             self.counter.close()
             self.reference.close()
-            print('Executed gal del')
+            self.taskx.close()
         except:
             pass
+    """
         
 """
 img = Scan()
