@@ -246,7 +246,13 @@ class Scan(Galvano):
         self.i = 0
         t = 10 # default timeout = 10 seconds
         sample = self.getxyarray(self.xarr,self.yarr,retrace)
+        temp = sample[0].copy()
+        sample[0] = sample[1].copy()
+        sample[1] = temp.copy()
         self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
+        #temp = self.sampleIndex[0].copy()
+        #self.sampleIndex[0] = self.sampleIndex[1].copy()
+        #self.sampleIndex[1] = temp.copy()
         self.sampleIndex = self.sampleIndex[:,1:].astype(int)
         self.sam_pc = shape(sample)[1]
         total_time = self.sam_pc*len(sample)/self.srate

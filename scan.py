@@ -1161,9 +1161,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.loadData(dataSet)
         if len(dataSet) > 4:
             self.redraw_PlotType_menu()
-        self.stageX.setValue(self.Stage.x)
-        self.stageY.setValue(self.Stage.y)
-        self.stageZ.setValue(self.Stage.z)
+        self.stageX.setValue(int(self.Stage.x))
+        self.stageY.setValue(int(self.Stage.y))
+        self.stageZ.setValue(int(self.Stage.z))
         
     def x_state_change(self):
         if self.xactive.isChecked():
