@@ -59,6 +59,7 @@ class ScanImage(QObject):
         self.yhighspeed = scanParams[16]
         self.zhighspeed = scanParams[17]
         self.scanKind = scanParams[18]
+        self.comment = scanParams[19]
         self.Gal.srate = self.srate
         self.xarr = list(linspace(self.xpos,self.xpos+self.xsize,self.xpoints,dtype=int))
         self.yarr = list(linspace(self.ypos,self.ypos+self.ysize,self.ypoints,dtype=int))
@@ -118,7 +119,8 @@ class ScanImage(QObject):
                          'Dimension': self.nd,
                          'x-position': self.xpos,
                          'y-position': self.ypos,
-                         'z-position': self.zpos}
+                         'z-position': self.zpos,
+                         'Comments': self.comment}
         if self.nd == 1: # 1D scan data
             shgData.data_type = 'LINE_PLOT'
             refData.data_type = 'LINE_PLOT'
@@ -399,6 +401,7 @@ class ScanImage(QObject):
             if self.go == -1:
                 self.stop_program()
                 return
+        
         if self.scanNum == Select.X_Scan_Continuous_Galvano:
             pass
         elif self.scanNum == Select.X_Scan_Step_Galvano:
@@ -407,9 +410,6 @@ class ScanImage(QObject):
             pass
         elif self.scanNum == Select.X_Scan_Step_Stage:
             self.initialData.emit(['1D x-scan using Stage', 'x (μm)',self.xpos])
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.display_stagemove_msg()
-            
             self.X_Scan_Step_Stage()
         elif self.scanNum == Select.Y_Scan_Continuous_Galvano:
             pass
@@ -418,20 +418,14 @@ class ScanImage(QObject):
         elif self.scanNum == Select.Y_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.Y_Scan_Step_Stage:
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
             self.initialData.emit(['1D y-scan using Stage', 'y (μm)',self.ypos])
             self.Stage.set_yspeed(F=int(self.yspeed))                
-            #self.display_stagemove_msg()
-            
             self.Y_Scan_Step_Stage()
         elif self.scanNum == Select.Z_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.Z_Scan_Step_Stage:
-            #self.spinBox_zmove.setValue(int(self.zpos))
             self.initialData.emit(['1D z-scan using Stage', 'z (μm)',self.zpos])
             self.Stage.set_zspeed(F=int(self.zspeed))                
-            #self.display_stagemove_msg()
-            
             self.Z_Scan_Step_Stage()
         elif self.scanNum == Select.YZ_Scan_Continuous_Galvano:
             pass
@@ -440,9 +434,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.YZ_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.YZ_Scan_Step_Stage:
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['2D YZ-scan using Stage','y (μm)','z (μm)',self.yscale,self.zscale])
             self.YZ_Scan_Step_Stage()
         elif self.scanNum == Select.ZY_Scan_Continuous_Galvano:
@@ -452,9 +443,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.ZY_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.ZY_Scan_Step_Stage:
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['2D ZY-scan using Stage', 'y (μm)','z (μm)',self.yscale,self.zscale])
             self.ZY_Scan_Step_Stage()
         elif self.scanNum == Select.XZ_Scan_Continuous_Galvano:
@@ -464,9 +452,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.XZ_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.XZ_Scan_Step_Stage:
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['2D XZ-scan using Stage', 'x (μm)','z (μm)',self.xscale,self.zscale])
             self.XZ_Scan_Step_Stage()
         elif self.scanNum == Select.ZX_Scan_Continuous_Galvano:
@@ -476,9 +461,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.ZX_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.ZX_Scan_Step_Stage:
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['2D ZX-scan using Stage', 'x (μm)','z (μm)',self.xscale,self.zscale])
             self.ZX_Scan_Step_Stage()
         elif self.scanNum == Select.XY_Scan_Continuous_Galvano:
@@ -498,9 +480,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.XY_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.XY_Scan_Step_Stage:
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['2D XY-scan using Stage', 'x (μm)','y (μm)',self.xscale,self.yscale])
             self.XY_Scan_Step_Stage()
         elif self.scanNum == Select.YX_Scan_Continuous_Galvano:
@@ -523,10 +502,8 @@ class ScanImage(QObject):
             self.initialData.emit(['2D YX-scan using Stage', 'x (μm)','y (μm)',self.xscale,self.yscale])
             self.YX_Scan_Step_Stage()
         elif self.scanNum == Select.XYZ_Scan_Continuous_Galvano:
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
             self.initialData.emit(['3D XYZ-scan using Laser', 'x (μm)','y (μm)','z (μm)',self.xscale,self.yscale,array(self.zarr)])
             self.Stage.set_zspeed(F=int(self.zspeed))
-            #self.display_stagemove_msg()
             self.xarr = linspace(-self.xsize/2,self.xsize/2,self.xpoints,dtype=float)
             self.yarr = linspace(-self.ysize/2,self.ysize/2,self.ypoints,dtype=float)
             self.XYZ_Scan_Continuous_Galvano()
@@ -537,10 +514,6 @@ class ScanImage(QObject):
         elif self.scanNum == Select.XYZ_Scan_Continuous_Stage:
             pass
         elif self.scanNum == Select.XYZ_Scan_Step_Stage:
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            #self.spinBox_zmove.setValue(int(self.zpos.value()))
-            #self.display_stagemove_msg()
             self.initialData.emit(['3D XYZ-scan using Stage', 'x (μm)','y (μm)','z (μm)',self.xscale,self.yscale,array(self.zarr)])
             self.XYZ_Scan_Step_Stage()
         elif self.scanNum == Select.YXZ_Scan_Continuous_Galvano:
@@ -573,6 +546,7 @@ class ScanImage(QObject):
         goto(arr[0])
         while stage_is_moving():
             pass
+        self.stage_move_finished.emit(True)
         setSpeed(F=int(speed))
         self.Gal.start_single_point_counter()
         for i,q in enumerate(arr):
