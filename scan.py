@@ -27,6 +27,9 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
+#TODO: display stage move prompt text not displayed
+#TODO: stage moves to previous position during startup
+#TODO: abrupt stop of scan during 1st scan causes error due to some problem with lastfilename.
 #TODO: check github synchronization issue
 #TODO: implement 1D galvanoscan
 #TODO incorporate logger module into the software
@@ -48,7 +51,7 @@ from numpy import ones, ndarray, shape,array, VisibleDeprecationWarning
 import os, sys
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QMessageBox, QShortcut
-from PyQt5.QtCore import QThread, QTimer
+from PyQt5.QtCore import QThread, QTimer, QEventLoop
 import pyqtgraph as pg
 from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
@@ -118,6 +121,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.show()
         self.initGalvano()
         self.initStage()
+        self.stagemoved = False
         self.display_stagemove_msg()
         self.stopcall = False
         self.plotNumber = 2
@@ -125,7 +129,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ra1 = 10
         self.rb1 = 10
         self.scan_type_change()
-        self.last_saved_filename = ""
+        self.last_saved_filename = self.filename+'.shg'
         self.remCurrentImage = QShortcut(QtGui.QKeySequence('Ctrl+Del'), self)
         self.remCurrentImage.activated.connect(self.removeImage)
         self.delCollection = QShortcut(QtGui.QKeySequence('Shift+Ctrl+Del'), self)
@@ -841,7 +845,25 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             pass # prompt dialogue to say that no axis is selected for scanning
                  
       
+    def stagefinished(self):
+        self.stagemoved = True
+    
     def display_stagemove_msg(self):
+        loop = QEventLoop()
+        info = QMessageBox(self)
+        info.setWindowTitle("Stage in Motion..")
+        info.setIcon(QMessageBox.Information)
+        info.setText("Stage is moving, Please wait...")
+        info.setStandardButtons(QMessageBox.NoButton)
+        if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            info.show()
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            QTimer.singleShot(100, loop.quit)
+        info.hide()
+    
+    """
+    def display_stagemove_msg(self):
+        #loop = QEventLoop()
         info = QMessageBox(self)
         info.setWindowTitle("Stage in Motion..")
         info.setIcon(QMessageBox.Information)
@@ -850,8 +872,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         stageStatus = MonitorStage(self.Stage)
         stageStatus.start()
         stageStatus.finished.connect(info.hide)
+        stageStatus.finished.connect(self.stagefinished)
         stageStatus.finished.connect(stageStatus.deleteLater)
         info.exec()
+        while not self.stagefinished:
+            sleep(0.1)
+            #QTimer.singleShot(1000, loop.quit)
+            #loop.exec_()
+    """
     
     def get_savefilename(self):
         if self.filename.find('.') != -1:
@@ -874,7 +902,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         
     def run_program(self):
         self.initialize()
-        #self.display_stagemove_msg()
+        self.display_stagemove_msg()
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
