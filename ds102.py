@@ -5,6 +5,10 @@ Created on Mon Jan 18 10:20:06 2021
 @author: badari
 """
 
+#TODO is_stagemoving function sometimes returns unexpected answers
+#           currently, they have been asked to be ignored, but need to check why it is happening
+#TODO some problem in monitoring stage when the speed is slow and needs to go large distance
+
 from serial import Serial
 from time import sleep
 
@@ -93,8 +97,8 @@ class DS102(Serial):
         
         def read_param(self,param):
             self.write(bytes(param+'\r','UTF-8'))
-            #sleep(0.05)
-            return self.read(100).decode('ascii')[:-1]
+            ans = self.read(100).decode('ascii')
+            return ans.rstrip()
         
         def write_param(self,param):
             self.write(bytes(param+'\r','UTF-8'))
@@ -428,13 +432,40 @@ class DS102(Serial):
             return self.read_param("AXIsZ:LIMIT?")
         
         def is_xmoving(self):
-            return int(self.read_param("AXIsX:MOTION?"))
+            ans = self.read_param("AXIsX:MOTION?")
+            return(int(ans))
+            """
+            if '0' in ans:
+                return 0
+            elif '1' in ans:
+                return 1
+            else:
+                return 0
+            """
         
         def is_ymoving(self):
-            return int(self.read_param("AXIsY:MOTION?"))
+            ans = self.read_param("AXIsY:MOTION?")
+            return(int(ans))
+            """
+            if '0' in ans:
+                return 0
+            elif '1' in ans:
+                return 1
+            else:
+                return 0
+            """
         
         def is_zmoving(self):
-            return int(self.read_param("AXIsZ:MOTION?"))
+            ans = self.read_param("AXIsZ:MOTION?")
+            return(int(ans))
+            """
+            if '0' in ans:
+                return 0
+            elif '1' in ans:
+                return 1
+            else:
+                return 0
+            """
         
         def is_xready(self):
             return self.read_param("AXIsX:READY?")

@@ -473,7 +473,7 @@ class ScanImage(QObject):
             self.Stage.y = self.ypos
             self.Gal.srate = self.srate
             while self.Stage.is_xmoving() or self.Stage.is_ymoving():
-                pass
+                sleep(0.1)
             self.XY_Scan_Continuous_Galvano()
         elif self.scanNum == Select.XY_Scan_Step_Galvano:
             pass
@@ -492,7 +492,7 @@ class ScanImage(QObject):
             self.Stage.x = self.xpos
             self.Stage.y = self.ypos
             while self.Stage.is_xmoving() or self.Stage.is_ymoving():
-                pass
+                sleep(0.1)
             self.YX_Scan_Continuous_Galvano()
         elif self.scanNum == Select.YX_Scan_Step_Galvano:
             pass
@@ -545,7 +545,7 @@ class ScanImage(QObject):
             arr.extend(temp)
         goto(arr[0])
         while stage_is_moving():
-            pass
+            sleep(0.1)
         self.stage_move_finished.emit(True)
         setSpeed(F=int(speed))
         self.Gal.start_single_point_counter()
@@ -619,7 +619,7 @@ class ScanImage(QObject):
         q = arr2[j]
         goto(p,q)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         set2speed(F=int(speed2))
         set1speed(F=int(speed1))
         self.Gal.start_single_point_counter()
@@ -727,7 +727,7 @@ class ScanImage(QObject):
         q = arr2[j]
         goto(p,q)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         set1speed(F=int(speed1))
         set2speed(F=int(speed2))
         self.Gal.start_single_point_counter()
@@ -905,7 +905,7 @@ class ScanImage(QObject):
             self.imgData2 = ones_like(self.shgData2)
         self.Stage.goto_xyz(self.xpos,self.ypos,self.zpos)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         self.Stage.set_zspeed(F=int(self.zspeed))
         for k,z in enumerate(self.zarr):
             self.Stage.goto_z(z)
@@ -976,7 +976,7 @@ class ScanImage(QObject):
         q = arr2[j]
         goto(p,q)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         set2speed(F=int(speed2))
         set1speed(F=int(speed1))
         self.Gal.start_single_point_counter()
@@ -1074,7 +1074,7 @@ class ScanImage(QObject):
         q = arr2[j]
         goto(p,q)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         set1speed(F=int(speed1))
         set2speed(F=int(speed2))
         self.Gal.start_single_point_counter()
@@ -1155,7 +1155,7 @@ class ScanImage(QObject):
         set2speed(F=int(highspeed2))
         goto(arr1[0],arr2[0])
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         
     def XYZ_Scan_Step_Stage(self):
         self.shgData = zeros((len(self.zarr),len(self.xarr),len(self.yarr)))
@@ -1167,7 +1167,7 @@ class ScanImage(QObject):
             self.imgData2 = ones_like(self.shgData2)
         self.Stage.goto_xyz(self.xpos,self.ypos,self.zpos)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         self.Stage.set_zspeed(F=int(self.zspeed))
         self.Gal.start_single_point_counter()
         for k,z in enumerate(self.zarr):
@@ -1199,7 +1199,7 @@ class ScanImage(QObject):
             self.imgData2 = ones_like(self.shgData2)
         self.Stage.goto_xyz(self.xpos,self.ypos,self.zpos)
         while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+            sleep(0.1)
         self.Stage.set_zspeed(F=int(self.zspeed))
         self.Gal.start_single_point_counter()
         for k,z in enumerate(self.zarr):

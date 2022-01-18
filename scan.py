@@ -108,7 +108,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
         self.zpos.setValue(self.Stage.z)
@@ -874,7 +874,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         
     def run_program(self):
         self.initialize()
-        self.display_stagemove_msg()
+        #self.display_stagemove_msg()
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
