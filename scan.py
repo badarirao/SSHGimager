@@ -27,6 +27,7 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
+#TODO: check github synchronization issue
 #TODO: implement 1D galvanoscan
 #TODO incorporate logger module into the software
 #TODO Clear button is not working
