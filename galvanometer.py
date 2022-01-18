@@ -101,11 +101,11 @@ class Galvano():
     
     @property 
     def x(self):
-        return self._x/self.xscale
+        return -self._x/self.xscale
     
     @x.setter 
     def x(self,value):
-        self._x = value*self.xscale
+        self._x = -value*self.xscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -118,11 +118,11 @@ class Galvano():
              
     @property 
     def y(self):
-        return self._y/self.yscale
+        return -self._y/self.yscale
     
     @y.setter
     def y(self,value):
-        self._y = value*self.yscale
+        self._y = -value*self.yscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -134,8 +134,8 @@ class Galvano():
             self.taskxy.write([self._y,self._x])
         
     def gotoxy(self,x,y):
-        self._x = x*self.xscale
-        self._y = y*self.yscale
+        self._x = -x*self.xscale
+        self._y = -y*self.yscale
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -245,8 +245,8 @@ class Scan(Galvano):
         self.i = 0
         t = 10 # default timeout = 10 seconds
         sample = self.getxyarray(self.xarr,self.yarr,retrace)
-        temp = sample[0].copy()
-        sample[0] = sample[1].copy()
+        temp = -sample[0].copy()
+        sample[0] = -sample[1].copy()
         sample[1] = temp.copy()
         self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
         #temp = self.sampleIndex[0].copy()
