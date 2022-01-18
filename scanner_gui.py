@@ -6,6 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+#hello
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pyqtgraph import ImageView, PlotItem, PlotWidget, ViewBox, mkPen
 
