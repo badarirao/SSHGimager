@@ -16,8 +16,8 @@ from datetime import datetime
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-# TODO: galvano - trace, retrace options are yet to be sorted out
-# TODO: saving of various kinds of trace, retrace images, especially when retrace = 0
+
+#TODO 1D scan using galvano
 
 class ScanImage(QObject):
     finished = pyqtSignal()

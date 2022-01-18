@@ -8,14 +8,13 @@ Notes:
 
 from numpy import ones, append, flip, shape, zeros, diff, array, copy
 from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection
-from nidaqmx import stream_writers, Task, stream_readers
-from nidaqmx.types import CtrTime
+from nidaqmx import stream_writers, Task
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError
 from nidaqmx.error_codes import DAQmxErrors
-from time import sleep
-from PyQt5.QtCore import QTimer, QEventLoop
-from PyQt5.QtCore import Qt
+#from time import sleep
+#from PyQt5.QtCore import QTimer, QEventLoop
+#from PyQt5.QtCore import Qt
 
 class Galvano():
     def __init__(self,daq='Dev1/',aochan='ao0:1'):
