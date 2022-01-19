@@ -339,7 +339,7 @@ class Scan(Galvano):
         self.create_ref()
         self.taskxy.stop()
         self.startscan = False
-        print('Executed gal stop scanxy')
+        #print('Executed gal stop scanxy')
         
     def start_single_point_counter(self):
         try:

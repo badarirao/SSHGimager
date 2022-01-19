@@ -108,7 +108,7 @@ class DS102(Serial):
             return -int(self.read_param("AXIsZ:Position?"))
         
         def xpos(self):
-            return int(self.read_param("AXIsX:Position?"))
+            return -int(self.read_param("AXIsX:Position?"))
         
         def ypos(self):
             return int(self.read_param("AXIsY:Position?"))

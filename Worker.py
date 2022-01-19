@@ -552,7 +552,7 @@ class ScanImage(QObject):
         goto(arr[0])
         while stage_is_moving():
             sleep(0.1)
-        self.stage_move_finished.emit(True)
+        #self.stage_move_finished.emit(True)
         setSpeed(F=int(speed))
         self.Gal.start_single_point_counter()
         for i,q in enumerate(arr):
