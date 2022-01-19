@@ -697,6 +697,8 @@ class ScanImage(QObject):
                 if i >= len(arr1):
                     i = iEnd
                     while True:
+                        p = arr1[i]
+                        q = arr2[j]
                         self.collect_2DSHG_secondSignal(goto,p,q,i,j)
                         i -= 1
                         if i < 0:
