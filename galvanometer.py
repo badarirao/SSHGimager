@@ -405,7 +405,6 @@ class Scan(Galvano):
         self.counter.close()
         self.reference.close()
                   
-    """
     def __del__(self):
         try:
             self.taskxy.close()
@@ -414,7 +413,6 @@ class Scan(Galvano):
             self.taskx.close()
         except:
             pass
-    """
         
 """
 img = Scan()

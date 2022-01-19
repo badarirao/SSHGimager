@@ -27,10 +27,7 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
-#TODO: display stage move prompt text not displayed
 #TODO: stage moves to previous position during startup
-#TODO: abrupt stop of scan during 1st scan causes error due to some problem with lastfilename.
-#TODO: check github synchronization issue
 #TODO: implement 1D galvanoscan
 #TODO incorporate logger module into the software
 #TODO Clear button is not working
@@ -268,6 +265,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.toolButton_xhome.clicked.connect(self.gohome_xstage)
         self.toolButton_yhome.clicked.connect(self.gohome_ystage)
         self.toolButton_zhome.clicked.connect(self.gohome_zstage)
+        self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
+        self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
+        self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
         self.stageX.setMaximum(self.ds102dialog.xmax)
         self.stageX.setMinimum(self.ds102dialog.xmin)
         self.stageX.setValue(self.Stage.x)
@@ -292,9 +292,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ypos.setMinimum(self.ds102dialog.ymin)
         self.zpos.setMaximum(self.ds102dialog.zmax)
         self.zpos.setMinimum(self.ds102dialog.zmin)
-        self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-        self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-        self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
         self.scan_type.setCurrentIndex(1)
         self.xsize.setValue(500)
         self.ysize.setValue(500)
@@ -855,10 +852,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         info.setIcon(QMessageBox.Information)
         info.setText("Stage is moving, Please wait...")
         info.setStandardButtons(QMessageBox.NoButton)
-        if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+        if self.Stage.ID == 'Fake':
             info.show()
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            QTimer.singleShot(100, loop.quit)
+            QTimer.singleShot(1000, loop.quit)
+            loop.exec_()
+        else:
+            if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                info.show()
+                while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                    QTimer.singleShot(100, loop.quit)
+                    loop.exec_()
         info.hide()
     
     """
@@ -1051,17 +1054,17 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         for i in range(no_of_datasets-2+l):
             self.imageData.append([])
         for dset in dataSet:
-            if 'RAW' in dset.title:
+            if 'raw' in dset.title:
                 if 'Retrace' in dset.title:
                     self.imageData[l+3] = array(dset)
                 else:
                     self.imageData[l] = array(dset)
-            elif 'REFERENCE' in dset.title:
+            elif 'reference' in dset.title:
                 if 'Retrace' in dset.title:
                     self.imageData[l+4] = array(dset)
                 else:
                     self.imageData[l+1] = array(dset)
-            elif 'PROCESSED' in dset.title:
+            elif 'processed' in dset.title:
                 if 'Retrace' in dset.title:
                     self.imageData[l+5] = array(dset)
                 else:
@@ -1073,7 +1076,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             dset.append(data.copy())
         self.collection.append(dset)
         self.updateCollection(self.collection[-1])
-        self.display_image_from_collection(dset,'PROCESSED')
+        self.display_image_from_collection(dset,'processed')
         dataSet[0].h5_dataset.file.close()
     
     def add_menu(self, data, menu_obj):

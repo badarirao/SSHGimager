@@ -146,6 +146,9 @@ class ScanImage(QObject):
                 refData.aAxis.quantity = 'Z'
                 shgData.aAxis.quantity = 'Z'
                 imgData.aAxis.quantity = 'Z'
+            shgData.aAxis.dimension_type = 'spectral'
+            refData.aAxis.dimension_type = 'spectral'
+            imgData.aAxis.dimension_type = 'spectral'
         elif self.nd == 2: # 2D scan data
             shgData.data_type = 'IMAGE'
             refData.data_type = 'IMAGE'
@@ -340,29 +343,32 @@ class ScanImage(QObject):
             except Exception:
                 pass
         shgData.modality = 'SHG micorscopy Raw Image'
-        shgData.title = self.filename+'_shg_RAW'
+        shgData.title = 'shg_raw'
         shgData.quantity = 'intensity'
         shgData.units = 'counts'
         refData.modality = 'SHG micorscopy Reference Intensity data'
-        refData.title = self.filename+'_reference'
+        refData.title = 'reference'
         refData.quantity = 'intensity'
         refData.units = 'μV'
         imgData.modality = 'SHG micorscopy Processed Image'
-        imgData.title = self.filename+'_processed'
+        imgData.title = 'processed'
         imgData.quantity = 'intensity'
         imgData.units = 'arb.units'
         info.modality = 'Scan Information'
         if self.scanKind == 0 and self.nd > 1:
+            shgData.title = 'shg_raw_Trace'
+            refData.title = 'reference_Trace'
+            imgData.title = 'processed_Trace'
             shgData2.modality = 'SHG micorscopy Raw Image'
-            shgData2.title = self.filename+'_shg_RAW'
+            shgData2.title = 'shg_raw_Retrace'
             shgData2.quantity = 'intensity'
             shgData2.units = 'counts'
             refData2.modality = 'SHG micorscopy Reference Intensity data'
-            refData2.title = self.filename+'_reference'
+            refData2.title = 'reference_Retrace'
             refData2.quantity = 'intensity'
             refData2.units = 'μV'
             imgData2.modality = 'SHG micorscopy Processed Image'
-            imgData2.title = self.filename+'_processed'
+            imgData2.title = 'processed_Retrace'
             imgData2.quantity = 'intensity'
             imgData2.units = 'arb.units'
         # save all data as HDF5 file
@@ -373,17 +379,17 @@ class ScanImage(QObject):
         hf.create_group('Scan Info')
         pyNSID.hdf_io.write_nsid_dataset(info, hf['Scan Info'], main_data_name="")
         if self.scanKind == 0 and self.nd > 1:
-            pyNSID.hdf_io.write_nsid_dataset(shgData, hf['Raw Data'], main_data_name="RAW SHG Trace")
-            pyNSID.hdf_io.write_nsid_dataset(imgData, hf['Processed Data'], main_data_name="PROCESSED Trace")
-            pyNSID.hdf_io.write_nsid_dataset(refData, hf['Reference Data'], main_data_name="REFERENCE Trace")
-            pyNSID.hdf_io.write_nsid_dataset(shgData2, hf['Raw Data'], main_data_name="RAW SHG Retrace")
-            pyNSID.hdf_io.write_nsid_dataset(imgData2, hf['Processed Data'], main_data_name="PROCESSED Retrace")
-            pyNSID.hdf_io.write_nsid_dataset(refData2, hf['Reference Data'], main_data_name="REFERENCE Retrace")
+            pyNSID.hdf_io.write_nsid_dataset(shgData, hf['Raw Data'])
+            pyNSID.hdf_io.write_nsid_dataset(imgData, hf['Processed Data'])
+            pyNSID.hdf_io.write_nsid_dataset(refData, hf['Reference Data'])
+            pyNSID.hdf_io.write_nsid_dataset(shgData2, hf['Raw Data'])
+            pyNSID.hdf_io.write_nsid_dataset(imgData2, hf['Processed Data'])
+            pyNSID.hdf_io.write_nsid_dataset(refData2, hf['Reference Data'])
         else:
             pass
-            pyNSID.hdf_io.write_nsid_dataset(shgData, hf['Raw Data'], main_data_name="RAW SHG")
-            pyNSID.hdf_io.write_nsid_dataset(imgData, hf['Processed Data'], main_data_name="PROCESSED")
-            pyNSID.hdf_io.write_nsid_dataset(refData, hf['Reference Data'], main_data_name="REFERENCE")
+            pyNSID.hdf_io.write_nsid_dataset(shgData, hf['Raw Data'])
+            pyNSID.hdf_io.write_nsid_dataset(imgData, hf['Processed Data'])
+            pyNSID.hdf_io.write_nsid_dataset(refData, hf['Reference Data'])
         hf.close()
         self.finalEmit.emit(self.fullfilename)
     
