@@ -339,6 +339,7 @@ class Scan(Galvano):
         self.create_ref()
         self.taskxy.stop()
         self.startscan = False
+        self.gotoxy(self.xhome,self.yhome)
         #print('Executed gal stop scanxy')
         
     def start_single_point_counter(self):
