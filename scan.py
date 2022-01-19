@@ -4,7 +4,6 @@ Created on Mon Feb  8 10:12:14 2021
 
 @author: Badari
 
--> Add z-focus function
 -> Confirm the minimum laser spot size, so the minimum step possible should be this spot size
 -> Find out what is the maximum scan rate that can be used,
 and set that limit in the program
@@ -27,6 +26,11 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
+# TODO: Check definition of galvano xhome and yhome may have changed
+#TODO: Implement z-focus function
+#TODO: load and save scan parameters to file
+#TODO: Increase resolution of z-stage so that we can focus it better.
+#TODO: Improve resolution of x andy y stage also?
 #TODO: stage moves to previous position during startup
 #TODO: implement 1D galvanoscan
 #TODO incorporate logger module into the software
@@ -35,13 +39,11 @@ DA convertor has 16bits so it has plus minus 32767 resolution.
 #TODO A Facility for Batch Program
 #TODO incorporate camera module into the software
 # TODO: If scan mode is changed, prompt to ensure adapters are changed accordingly.
+# TODO: add scan mode information in scan information
+# TODO: Disable laser scan in reflection mode
 # TODO: If counts are not detected, prompt to ask if adapters are set appropriately.
 # Continuous scan: only trace gives wrong counts at the edges. Need to account for it
-# Add user option: useful to decide save path, and load previous scan parameters.
-    * Each user account will have a definite path to save  the data, and also default scan parameters, and last scan parameters.
-# TODO verify display-stage-moving message is correctly displayed
-# TODO simple program to extract all info from the image files.
-# GUI to view, process, and analyze all info from the image files.
+# TODO: GUI to view, process, and analyze all info from the image files.
 """
 
 from numpy import ones, ndarray, shape,array, VisibleDeprecationWarning
@@ -54,7 +56,7 @@ from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
 from ds102_settings import ds102setting
 from time import sleep
-from utilities import checkInstrument, MonitorStage, Select
+from utilities import checkInstrument, Select
 from Worker import ScanImage
 from SciFiReaders import NSIDReader
 import warnings
@@ -538,6 +540,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.yscanorder.setCurrentIndex(0)
             
     def initialize(self):
+        self.xposition = self.xpos.value()
+        self.yposition = self.ypos.value()
+        self.zposition = self.zpos.value()
         self.nd = 0
         if self.xactive.isChecked():
             self.nd = self.nd + 1
@@ -568,6 +573,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.nd == 1:
             if self.xactive.isChecked():
                 self.stageX.setValue(int(self.xpos.value()))
+                self.yposition = self.stageY.value()
+                self.zposition = self.stageZ.value()
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.xscale = (self.x1-self.x0)/self.image.shape[0]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
@@ -584,6 +591,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 labels={'bottom': ("X",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.yactive.isChecked():
                 self.stageY.setValue(int(self.ypos.value()))
+                self.xposition = self.stageX.value()
+                self.zposition = self.stageZ.value()
                 self.y0,self.y1 = 0,self.ysize.value()
                 self.yscale = (self.y1-self.y0)/self.image.shape[0]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
@@ -599,6 +608,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scanNum = Select.Y_Scan_Step_Stage
                 labels={'bottom': ("Y",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.zactive.isChecked():
+                self.xposition = self.stageX.value()
+                self.yposition = self.stageY.value()
                 self.stageZ.setValue(int(self.zpos.value()))
                 self.z0,self.z1 = 0,self.zsize.value()
                 self.a0, self.a1, self.asize = self.z0, self.z1, self.zsize.value()
@@ -614,6 +625,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             if not self.xactive.isChecked(): # yz scan
                 self.stageY.setValue(int(self.ypos.value()))
                 self.stageZ.setValue(int(self.zpos.value()))
+                self.xposition = self.stageX.value()
                 self.y0,self.y1 = 0,self.ysize.value()
                 self.z0,self.z1 = 0,self.zsize.value()
                 self.yscale, self.zscale = (self.y1-self.y0)/self.image.shape[0],(self.z1-self.z0)/self.image.shape[1]
@@ -647,6 +659,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             elif not self.yactive.isChecked(): # xz scan
                 self.stageX.setValue(int(self.xpos.value()))
                 self.stageZ.setValue(int(self.zpos.value()))
+                self.yposition = self.stageY.value()
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.z0,self.z1 = 0,self.zsize.value()
                 self.xscale, self.zscale = (self.x1-self.x0)/self.image.shape[0],(self.z1-self.z0)/self.image.shape[1]
@@ -680,6 +693,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             elif not self.zactive.isChecked(): # xy scan
                 self.stageX.setValue(int(self.xpos.value()))
                 self.stageY.setValue(int(self.ypos.value()))
+                self.zposition = self.stageZ.value()
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.y0,self.y1 = 0,self.ysize.value()
                 self.xscale, self.yscale = (self.x1-self.x0)/self.image.shape[0],(self.y1-self.y0)/self.image.shape[1]
@@ -916,11 +930,13 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stopcall = False
         self.get_savefilename()
         self.draw_original_PlotType_menu()
+        self.initiallevel = 0
+        self.autolevel = True
         self.scanParams = [self.nd,
                            self.scanNum, 
-                           self.xpos.value(), 
-                           self.ypos.value(), 
-                           self.zpos.value(), 
+                           self.xposition, 
+                           self.yposition, 
+                           self.zposition, 
                            self.xsize.value(),
                            self.ysize.value(),
                            self.zsize.value(),
@@ -1009,14 +1025,18 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.data_line.setData(imageData[0],self.image)
         
     def plotImage(self,imageData):
+        if self.autolevel == True:
+            self.initiallevel += 1
+            if self.initiallevel > 10:
+                self.autolevel = False
         self.image = imageData[self.plotNumber]
         self.image = self.image.round(decimals = 6)
-        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale])
+        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],autoLevels=self.autolevel)
     
     def plot3DImage(self,imageData):
         self.image = imageData[self.plotNumber]
         self.image = self.image.round(decimals = 6)
-        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],xvals = self.zarr)
+        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],xvals = self.zarr,autoHistogramRange=False)
     
     def change_save_directory(self):
         folderpath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Folder')
