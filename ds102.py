@@ -197,7 +197,7 @@ class DS102(Serial):
         def goto_yz(self,y,z):
             if self._y == y and self._z == z:
                 return
-            self.write_param("GOLineA Y{0} Z{1}".format(y,-1*z))
+            self.write_param("GOLineA Y{0} Z{1}".format(y,-z))
             self._y = int(y)
             self._z = int(z)
             #while self.is_ymoving() or self.is_zmoving():
@@ -434,38 +434,14 @@ class DS102(Serial):
         def is_xmoving(self):
             ans = self.read_param("AXIsX:MOTION?")
             return(int(ans))
-            """
-            if '0' in ans:
-                return 0
-            elif '1' in ans:
-                return 1
-            else:
-                return 0
-            """
         
         def is_ymoving(self):
             ans = self.read_param("AXIsY:MOTION?")
             return(int(ans))
-            """
-            if '0' in ans:
-                return 0
-            elif '1' in ans:
-                return 1
-            else:
-                return 0
-            """
         
         def is_zmoving(self):
             ans = self.read_param("AXIsZ:MOTION?")
             return(int(ans))
-            """
-            if '0' in ans:
-                return 0
-            elif '1' in ans:
-                return 1
-            else:
-                return 0
-            """
         
         def is_xready(self):
             return self.read_param("AXIsX:READY?")
