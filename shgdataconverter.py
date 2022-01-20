@@ -35,6 +35,8 @@ if __name__ == "__main__":
             if file.endswith(".shg"):
                 try:
                     dataSet = NSIDReader(file).read()
+                    dataSet[0].h5_dataset.file.close()
+                    print("opened {}".format(file))
                 except:
                     continue
                 no_of_datasets = len(dataSet)
@@ -57,7 +59,7 @@ if __name__ == "__main__":
                             savetxt(filename,whole_data,fmt='%g',delimiter='\t')
                             if 'processed' in dset.title.lower():
                                 try:
-                                    CurveVisualizer(dataSet[0]).fig.savefig(filename[:-4]+'.png')
+                                    CurveVisualizer(dset).fig.savefig(filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 2:
