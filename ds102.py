@@ -433,15 +433,15 @@ class DS102(Serial):
         
         def is_xmoving(self):
             ans = self.read_param("AXIsX:MOTION?")
-            return(int(ans))
+            return int(ans)
         
         def is_ymoving(self):
             ans = self.read_param("AXIsY:MOTION?")
-            return(int(ans))
+            return int(ans)
         
         def is_zmoving(self):
             ans = self.read_param("AXIsZ:MOTION?")
-            return(int(ans))
+            return int(ans)
         
         def is_xready(self):
             return self.read_param("AXIsX:READY?")

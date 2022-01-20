@@ -37,7 +37,6 @@ class Galvano():
         self.sam_pc = 450
         self.xhome = 0
         self.yhome = 0
-        
 
     def create_taskxy(self):
         self.taskxy = Task()
@@ -205,6 +204,7 @@ class Scan(Galvano):
         self.img_dataRef = zeros(10)
         self.scanning = True
         self.ID = 'NI6211'
+        self.scancomplete = False
     
     def create_ctr(self):
         try:
@@ -283,6 +283,7 @@ class Scan(Galvano):
             self.refData = -ones(self.sam_pc)
             self.shgData2 = zeros(self.sam_pc)
             self.refData2 = -ones(self.sam_pc)
+        self.scancomplete = False
         self.counter.start()
         self.reference.start()
         self.taskxy.start()
@@ -326,6 +327,7 @@ class Scan(Galvano):
                 self.img_Processed2 = self.img_dataSHG2/self.img_dataRef2
             tj = self.taskxy.is_task_done()
             if tj or self.i >= self.sam_pc:
+                self.scancomplete = True
                 return False
             return True
         except DaqError:
