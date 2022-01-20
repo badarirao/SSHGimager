@@ -110,7 +110,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -550,13 +550,21 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.nd = self.nd + 1
         if self.zactive.isChecked():
             self.nd = self.nd + 1
+        if self.nd == 0:
+            info = QMessageBox(self)
+            info.setWindowTitle("Error!")
+            info.setIcon(QMessageBox.Critical)
+            info.setText("No axis selected. Please select atleast 1 axis to scan..")
+            info.setStandardButtons(QMessageBox.Ok)
+            info.show()
+            self.stopcall = True
+            return
         # there is some problem when ypoints <= 4
         if self.nd == 3 and self.ypoints.value() <= 4:
             self.ypoints.setValue(5)
         self.points_to_steps(self.xsize,self.xstep,self.xpoints)
         self.points_to_steps(self.ysize,self.ystep,self.ypoints)
         self.points_to_steps(self.zsize,self.zstep,self.zpoints)
-        
         self.apoints = 1
         self.bpoints = 1
         self.cpoints = 1
@@ -776,16 +784,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 #self.ref_plot1d.show()
             self.liveplot1d.setLabels(**labels)
             
-        elif self.nd == 0:
-            inst = QtWidgets.QDialog(self)
-            inst.resize(400, 60)
-            hl = QtWidgets.QHBoxLayout(inst)
-            inst.setWindowTitle("No axis selected")
-            l = QtWidgets.QLabel(inst)
-            l.setText("Please select atleast 1 axis to scan")
-            hl.addWidget(l)
-            inst.exec_()
-            #self.ref_plot1d.getPlotItem().setLabels(**labels)
         
     def setgalvano(self):
         if self.galvanodialog.exec_():
@@ -918,7 +916,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.scanKind = 2
         
     def run_program(self):
+        self.stopcall = False
         self.initialize()
+        if self.stopcall:
+            return
         self.display_stagemove_msg()
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
@@ -927,7 +928,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageStop_Button.setEnabled(False)
         self.sample_name.setEnabled(False)
         self.comments.setEnabled(False)
-        self.stopcall = False
         self.get_savefilename()
         self.draw_original_PlotType_menu()
         self.initiallevel = 0
@@ -1229,6 +1229,38 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageX.setValue(int(self.Stage.x))
         self.stageY.setValue(int(self.Stage.y))
         self.stageZ.setValue(int(self.Stage.z))
+        if self.scanNum == Select.Z_Scan_Step_Stage:
+            for dset in dataSet:
+                if dset.modality == 'Scan Information':
+                    info = dset.metadata['metadata']
+                    break
+            peak_position = 0
+            peak_intensity = 0
+            try:
+                peak_position = int(info['Z-Focus Peak Position'])
+                peak_intensity = info['Z-Focus Peak Intensity']
+            except KeyError:
+                pass
+            if peak_position and peak_intensity:
+                peak_label = pg.TextItem('',**{'color': '#FFF'})
+                font=QtGui.QFont()
+                font.setPixelSize(20)
+                peak_label.setFont(font)
+                peak_label.setPos(QtCore.QPointF(info['z-position'],peak_intensity))
+                peak_label.setText('Peak Position: {}'.format(peak_position))
+                self.ref_plot1d.addItem(peak_label)
+                info = QMessageBox(self)
+                info.setWindowTitle("Move Z to Focus?")
+                info.setIcon(QMessageBox.Question)
+                info.setText("Automatically set Z to focus?")
+                info.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                returnValue = info.exec()
+                if returnValue == QMessageBox.Ok:
+                    self.Stage.z = peak_position - 20
+                    while self.Stage.is_zmoving():
+                        pass
+                    self.stageZ.setValue(peak_position)
+                
         #print("Final laser position: {0} {1}".format(self.Gal._x,self.Gal._y))
         
     def x_state_change(self):
