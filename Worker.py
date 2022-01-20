@@ -145,9 +145,6 @@ class ScanImage(QObject):
                 refData.aAxis.quantity = 'Z'
                 shgData.aAxis.quantity = 'Z'
                 imgData.aAxis.quantity = 'Z'
-            shgData.aAxis.dimension_type = 'spectral'
-            refData.aAxis.dimension_type = 'spectral'
-            imgData.aAxis.dimension_type = 'spectral'
         elif self.nd == 2: # 2D scan data
             shgData.data_type = 'IMAGE'
             refData.data_type = 'IMAGE'
@@ -341,6 +338,10 @@ class ScanImage(QObject):
                 imgData2.cAxis.units = 'μm'
             except Exception:
                 pass
+        if self.nd == 1:
+            shgData.aAxis.dimension_type = 'spectral'
+            refData.aAxis.dimension_type = 'spectral'
+            imgData.aAxis.dimension_type = 'spectral'
         shgData.modality = 'SHG micorscopy Raw Image'
         shgData.title = 'shg_raw'
         shgData.quantity = 'intensity'
