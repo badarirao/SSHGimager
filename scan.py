@@ -111,10 +111,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
         self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
+        self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
         self.zpos.setValue(self.Stage.z)
-        self.functionalize_buttons()
         self.initialize()
         self.initialize_plot()
         self.show()
@@ -792,10 +792,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.initGalvano()
     
     def initGalvano(self):
-        self.Gal.x = self.galvanodialog.xpos
-        self.Gal.y = self.galvanodialog.ypos
         self.Gal.xscale = self.galvanodialog.xscale
         self.Gal.yscale = self.galvanodialog.yscale
+        self.Gal.x = self.galvanodialog.xpos/self.galvanodialog.xscale
+        self.Gal.y = self.galvanodialog.ypos/self.galvanodialog.yscale
         self.Gal.xhome = self.galvanodialog.xpos
         self.Gal.yhome = self.galvanodialog.ypos
         if self.scan_type.currentIndex() == 0:
@@ -932,6 +932,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.draw_original_PlotType_menu()
         self.initiallevel = 0
         self.autolevel = True
+        #print("Initial: {0} {1}".format(self.Gal._x,self.Gal._y))
         self.scanParams = [self.nd,
                            self.scanNum, 
                            self.xposition, 
@@ -1228,6 +1229,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageX.setValue(int(self.Stage.x))
         self.stageY.setValue(int(self.Stage.y))
         self.stageZ.setValue(int(self.Stage.z))
+        #print("Final laser position: {0} {1}".format(self.Gal._x,self.Gal._y))
         
     def x_state_change(self):
         if self.xactive.isChecked():
