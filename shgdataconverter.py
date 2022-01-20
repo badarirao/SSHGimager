@@ -57,16 +57,16 @@ if __name__ == "__main__":
                             xarr = array(dset.aAxis)
                             whole_data = column_stack((xarr,arr))
                             savetxt(filename,whole_data,fmt='%g',delimiter='\t')
-                            if 'processed' in dset.title.lower():
+                            if 'shg' in dset.title.lower():
                                 try:
                                     CurveVisualizer(dset).fig.savefig(filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 2:
                             savetxt(filename, arr, fmt='%g',delimiter='\t')
-                            if 'processed' in dset.title.lower():
+                            if 'shg' in dset.title.lower():
                                 try:
-                                    ImageVisualizer(dataSet[0]).fig.savefig(filename[:-4]+'.png')
+                                    ImageVisualizer(dset).fig.savefig(filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 3:
