@@ -337,9 +337,11 @@ class Scan(Galvano):
         self.counter.stop()
         self.reference.stop()
         self.create_ref()
-        self.taskxy.stop()
+        self.taskxy.close()
+        self.create_taskxy()
         self.startscan = False
-        self.gotoxy(self.xhome,self.yhome)
+        # move laser to home position
+        self.gotoxy(self.xhome/self.xscale,self.yhome/self.yscale)
         #print('Executed gal stop scanxy')
         
     def start_single_point_counter(self):
@@ -359,7 +361,7 @@ class Scan(Galvano):
                                                     samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
         writer = stream_writers.AnalogSingleChannelWriter(self.taskx.out_stream)
-        data = array((self.x,self.x),dtype=float)
+        data = array((self._x,self._x),dtype=float)
         writer.write_many_sample(data)
         self.reference.start()
         # first just try to see if the pulse generator works fine.
