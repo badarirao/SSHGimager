@@ -7,7 +7,7 @@ Created on Tue Dec  7 16:23:49 2021
 from PyQt5.QtCore import QObject, pyqtSignal
 from utilities import Select
 from time import sleep
-from numpy import linspace, array, ones_like, zeros
+from numpy import linspace, array, ones_like, zeros, average, argmax
 import h5py
 import sidpy
 import pyNSID
@@ -15,7 +15,7 @@ from pymeasure.experiment import unique_filename
 from datetime import datetime
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
+from scipy.signal import find_peaks
 
 #TODO 1D scan using galvano
 
@@ -68,6 +68,7 @@ class ScanImage(QObject):
         self.yscale = self.ysize/self.ypoints
         self.zscale = self.zsize/self.zpoints
         self.filename = filename + '_{}D'.format(self.nd)
+        self.scancomplete = False
        
     def getScanKind(self,num):
         if num == -1:
@@ -110,12 +111,22 @@ class ScanImage(QObject):
         # Add information about scanning parameters as metadata
         info = sidpy.Dataset.from_array([-1])
         self.fullfilename = unique_filename(directory='.',prefix=self.filename,datetimeformat="",ext='shg')
+        self.endtime = datetime.now()
+        self.starttime.replace(microsecond=0)
+        self.endtime.replace(microsecond=0)
+        scanTime = str(self.endtime - self.starttime)
         info.title = 'Scan Info'
+        if self.scancomplete:
+            scan_complete_status = 'Yes'
+        else:
+            scan_complete_status = 'Aborted'
         info.metadata = {'File Name': self.fullfilename.split('\\')[-1][:-4],
                          'Scan Type':Select.scanName(self.scanNum),
                          'Scan Kind':self.getScanKind(self.scanKind),
                          'Scan Speed': self.srate,
-                         'Date & Time': datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                         'Date & Time': self.endtime.strftime("%d/%m/%Y %H:%M:%S"),
+                         'Total Scan Time': scanTime,
+                         'Scan Completed?': scan_complete_status,
                          'Dimension': self.nd,
                          'x-position': self.xpos,
                          'y-position': self.ypos,
@@ -373,6 +384,16 @@ class ScanImage(QObject):
             imgData2.quantity = 'intensity'
             imgData2.units = 'arb.units'
         # save all data as HDF5 file
+        if self.scanNum == Select.Z_Scan_Step_Stage:
+            intensity = array(imgData)
+            zarr = array(imgData.aAxis)
+            peaks, maxht = find_peaks(intensity,height=average(intensity),width=4)
+            maxht = maxht['peak_heights']
+            if len(peaks) > 0:
+                peak_position = zarr[peaks[argmax(maxht)]]
+                peak_intensity = max(maxht)
+                info.metadata['Z-Focus Peak Position'] = int(peak_position)
+                info.metadata['Z-Focus Peak Intensity'] = peak_intensity
         hf = h5py.File(self.fullfilename,'w')
         hf.create_group('Processed Data')
         hf.create_group('Raw Data')
@@ -408,7 +429,8 @@ class ScanImage(QObject):
             if self.go == -1:
                 self.stop_program()
                 return
-        
+        self.scancomplete = False
+        self.starttime = datetime.now()
         if self.scanNum == Select.X_Scan_Continuous_Galvano:
             pass
         elif self.scanNum == Select.X_Scan_Step_Galvano:
@@ -569,6 +591,8 @@ class ScanImage(QObject):
             self.lineData.emit([lData,self.shgData,self.refData,self.imgData])
             if self.stopCall:
                 break
+        if q == arr[-1]:
+            self.scancomplete = True
         self.Gal.stop_single_point_counter()
         setSpeed(F=int(highSpeed))
         self.lineData.emit([lData,self.shgData,self.refData,self.imgData])
@@ -641,6 +665,7 @@ class ScanImage(QObject):
                 if i >= len(arr1):
                     j += 1
                     if j >= len(arr2):
+                        self.scancomplete = True
                         break
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[0])
@@ -659,6 +684,7 @@ class ScanImage(QObject):
                 if i < 0:
                     j += 1
                     if j >= len(arr2):
+                        self.scancomplete = True
                         break
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[-1])
@@ -678,6 +704,7 @@ class ScanImage(QObject):
                     if i >= len(arr1):
                         j += 1
                         if j >= len(arr2):
+                            self.scancomplete = True
                             break
                         i = iEnd
                 else:
@@ -685,6 +712,7 @@ class ScanImage(QObject):
                     if i < 0:
                         j += 1
                         if j >= len(arr2):
+                            self.scancomplete = True
                             break
                         i = iStart
                 if self.stopCall:
@@ -709,6 +737,7 @@ class ScanImage(QObject):
                         if self.stopCall:
                             break
                     if j >= len(arr2):
+                        self.scancomplete = True
                         break
                 if self.stopCall:
                     break
@@ -751,6 +780,7 @@ class ScanImage(QObject):
                 if j >= len(arr2):
                     i += 1
                     if i >= len(arr1):
+                        self.scancomplete = True
                         break
                     #set2speed(F=int(highspeed2))
                     gotoQ(arr2[0])
@@ -769,6 +799,7 @@ class ScanImage(QObject):
                 if j < 0:
                     i += 1
                     if i >= len(arr1):
+                        self.scancomplete = True
                         break
                     #set2speed(F=int(highspeed2))
                     gotoQ(arr2[-1])
@@ -788,6 +819,7 @@ class ScanImage(QObject):
                     if j >= len(arr2):
                         i += 1
                         if i >= len(arr1):
+                            self.scancomplete = True
                             break
                         j = jEnd
                 else:
@@ -795,6 +827,7 @@ class ScanImage(QObject):
                     if j < 0:
                         i += 1
                         if i >= len(arr1):
+                            self.scancomplete = True
                             break
                         j = jStart
                 if self.stopCall:
@@ -817,6 +850,7 @@ class ScanImage(QObject):
                         if self.stopCall:
                             break
                     if i >= len(arr1):
+                        self.scancomplete = True
                         break
                 if self.stopCall:
                     break
@@ -884,6 +918,8 @@ class ScanImage(QObject):
             if self.Gal.update_scanxy():
                 self.imageData.emit([self.Gal.img_dataSHG,self.Gal.img_dataRef,self.Gal.img_Processed])
             else:
+                if self.Gal.scancomplete:
+                    self.scancomplete = True
                 break
         self.imageData.emit([self.Gal.img_dataSHG,self.Gal.img_dataRef,self.Gal.img_Processed])
         self.shgData = self.Gal.img_dataSHG
@@ -940,6 +976,8 @@ class ScanImage(QObject):
             if self.stopCall:
                 self.Gal.startscan = False
                 break
+        if z == self.zarr[-1] and self.Gal.scancomplete:
+            self.scancomplete = True
         self.imageData3D.emit([self.shgData,self.refData,self.imgData])
         self.saveData()
         self.stop_program()
@@ -984,7 +1022,7 @@ class ScanImage(QObject):
         p = arr1[i]
         q = arr2[j]
         goto(p,q)
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving():
             sleep(0.1)
         set2speed(F=int(speed2))
         set1speed(F=int(speed1))
@@ -1003,6 +1041,8 @@ class ScanImage(QObject):
                         break
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[0])
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                        pass
                     #set1speed(F=int(speed1))
                     i = iStart
                 if self.stopCall:
@@ -1019,7 +1059,7 @@ class ScanImage(QObject):
                         break
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[-1])
-                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set1speed(F=int(speed1))
                     i = iEnd
@@ -1070,7 +1110,7 @@ class ScanImage(QObject):
         set1speed(F=int(highspeed1))
         set2speed(F=int(highspeed2))
         goto(arr1[0],arr2[0])
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving():
             pass
     
     def altScan3D_Stage(self,goto,arr1,arr2,set1speed,set2speed,speed1,speed2,highspeed1,highspeed2,scanKind,gotoQ,k):
@@ -1082,7 +1122,7 @@ class ScanImage(QObject):
         p = arr1[i]
         q = arr2[j]
         goto(p,q)
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving():
             sleep(0.1)
         set1speed(F=int(speed1))
         set2speed(F=int(speed2))
@@ -1099,7 +1139,7 @@ class ScanImage(QObject):
                         break
                     #set2speed(F=int(highspeed2))
                     gotoQ(arr2[0])
-                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set2speed(F=int(speed2))
                     j = jStart
@@ -1115,7 +1155,7 @@ class ScanImage(QObject):
                         break
                     #set2speed(F=int(highspeed2))
                     gotoQ(arr2[-1])
-                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set2speed(F=int(speed2))
                     j = jEnd
@@ -1163,7 +1203,7 @@ class ScanImage(QObject):
         set1speed(F=int(highspeed1))
         set2speed(F=int(highspeed2))
         goto(arr1[0],arr2[0])
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving():
             sleep(0.1)
         
     def XYZ_Scan_Step_Stage(self):
@@ -1192,6 +1232,8 @@ class ScanImage(QObject):
                               self.scanKind,self.Stage.goto_x,k)
             if self.stopCall:
                 break
+        if z == self.zarr[-1]:
+            self.scancomplete = True
         self.imageData3D.emit([self.shgData,self.refData,self.imgData])
         self.Gal.stop_single_point_counter()
         self.Stage.set_zspeed(F=int(self.zhighspeed))
@@ -1224,6 +1266,8 @@ class ScanImage(QObject):
                               self.scanKind,self.Stage.goto_y,k)
             if self.stopCall:
                 break
+        if z == self.zarr[-1]:
+            self.scancomplete = True
         self.imageData3D.emit([self.shgData,self.refData,self.imgData])
         self.Gal.stop_single_point_counter()
         self.Stage.set_zspeed(F=int(self.zhighspeed))
