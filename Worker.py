@@ -119,8 +119,7 @@ class ScanImage(QObject):
                          'Dimension': self.nd,
                          'x-position': self.xpos,
                          'y-position': self.ypos,
-                         'z-position': self.zpos,
-                         'Comments': self.comment}
+                         'z-position': self.zpos}
         if self.nd == 1: # 1D scan data
             shgData.data_type = 'LINE_PLOT'
             refData.data_type = 'LINE_PLOT'
@@ -355,6 +354,7 @@ class ScanImage(QObject):
         imgData.quantity = 'intensity'
         imgData.units = 'arb.units'
         info.modality = 'Scan Information'
+        info.metadata['Comments'] =  self.comment
         if self.scanKind == 0 and self.nd > 1:
             shgData.title = 'shg_raw_Trace'
             refData.title = 'reference_Trace'
