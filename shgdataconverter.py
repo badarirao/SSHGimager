@@ -39,30 +39,30 @@ if __name__ == "__main__":
                     continue
                 no_of_datasets = len(dataSet)
                 for dset in dataSet:
-                    if dset.modality == 'Scan Information':
+                    if 'scan information' in dset.modality.lower():
                         info = dset.metadata['metadata']
                         with open(info['File Name']+'_info.txt','w') as f:
                             for key,value in info.items():
-                                if key == 'Comments':
+                                if 'comment' in key.lower():
                                     f.write('{0}\n'.format(value))
                                 else:
                                     f.write('{0}: {1}\n'.format(key,value))
                 for dset in dataSet:
-                    if dset.modality != 'Scan Information':
+                    if 'scan information' not in dset.modality.lower():
                         arr = array(dset)
                         filename = info['File Name'] + '_' + dset.title.split('/')[-1] + '.txt'
                         if info['Dimension'] == 1:
                             xarr = array(dset.aAxis)
                             whole_data = column_stack((xarr,arr))
                             savetxt(filename,whole_data,fmt='%g',delimiter='\t')
-                            if 'processed' in dset.title:
+                            if 'processed' in dset.title.lower():
                                 try:
                                     CurveVisualizer(dataSet[0]).fig.savefig(filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 2:
-                            savetxt(filename, arr.T, fmt='%g',delimiter='\t')
-                            if 'processed' in dset.title:
+                            savetxt(filename, arr, fmt='%g',delimiter='\t')
+                            if 'processed' in dset.title.lower():
                                 try:
                                     ImageVisualizer(dataSet[0]).fig.savefig(filename[:-4]+'.png')
                                 except:
@@ -70,8 +70,5 @@ if __name__ == "__main__":
                         elif info['Dimension'] == 3:
                             for i in range(arr.shape[0]):
                                 arr2D = arr[i,:,:]
-                                savetxt(filename,arr2D.T,fmt='%g',delimiter='\t')
+                                savetxt(filename,arr2D,fmt='%g',delimiter='\t')
                                 f.write(b'\n\n')
-
-                            
-            
