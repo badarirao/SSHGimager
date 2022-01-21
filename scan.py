@@ -56,7 +56,7 @@ from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
 from ds102_settings import ds102setting
 from time import sleep
-from utilities import checkInstrument, Select
+from utilities import checkInstrument, Select, BUF
 from Worker import ScanImage
 from SciFiReaders import NSIDReader
 import warnings
@@ -540,9 +540,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.yscanorder.setCurrentIndex(0)
             
     def initialize(self):
-        self.xposition = self.xpos.value()
-        self.yposition = self.ypos.value()
-        self.zposition = self.zpos.value()
+        self.xposition = int(self.xpos.value())
+        self.yposition = int(self.ypos.value())
+        self.zposition = int(self.zpos.value())
         self.nd = 0
         if self.xactive.isChecked():
             self.nd = self.nd + 1
@@ -921,6 +921,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.stopcall:
             return
         self.display_stagemove_msg()
+        self.stageX.setValue(self.xposition-BUF)
+        self.stageY.setValue(self.yposition-BUF)
+        self.stageZ.setValue(self.zposition-BUF)
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            pass
+        self.stageX.setValue(self.xposition)
+        self.stageY.setValue(self.yposition)
+        self.stageZ.setValue(self.zposition)
+        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            pass
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
@@ -1230,36 +1240,41 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageY.setValue(int(self.Stage.y))
         self.stageZ.setValue(int(self.Stage.z))
         if self.scanNum == Select.Z_Scan_Step_Stage:
+            info = None
             for dset in dataSet:
                 if dset.modality == 'Scan Information':
                     info = dset.metadata['metadata']
                     break
-            peak_position = 0
-            peak_intensity = 0
-            try:
-                peak_position = int(info['Z-Focus Peak Position'])
-                peak_intensity = info['Z-Focus Peak Intensity']
-            except KeyError:
-                pass
-            if peak_position and peak_intensity:
-                peak_label = pg.TextItem('',**{'color': '#FFF'})
-                font=QtGui.QFont()
-                font.setPixelSize(20)
-                peak_label.setFont(font)
-                peak_label.setPos(QtCore.QPointF(info['z-position'],peak_intensity))
-                peak_label.setText('Peak Position: {}'.format(peak_position))
-                self.ref_plot1d.addItem(peak_label)
-                info = QMessageBox(self)
-                info.setWindowTitle("Move Z to Focus?")
-                info.setIcon(QMessageBox.Question)
-                info.setText("Automatically set Z to focus?")
-                info.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-                returnValue = info.exec()
-                if returnValue == QMessageBox.Ok:
-                    self.Stage.z = peak_position - 20
-                    while self.Stage.is_zmoving():
-                        pass
-                    self.stageZ.setValue(peak_position)
+            if info:
+                peak_position = 0
+                peak_intensity = 0
+                try:
+                    peak_position = int(info['Z-Focus Peak Position'])
+                    peak_intensity = info['Z-Focus Peak Intensity']
+                except KeyError:
+                    pass
+                if peak_position and peak_intensity:
+                    peak_label = pg.TextItem('',**{'color': '#FFF'})
+                    font=QtGui.QFont()
+                    font.setPixelSize(20)
+                    peak_label.setFont(font)
+                    peak_label.setPos(QtCore.QPointF(info['z-position'],peak_intensity))
+                    peak_label.setText('Peak Position: {}'.format(peak_position))
+                    self.ref_plot1d.addItem(peak_label)
+                    mesBox = QMessageBox(self)
+                    mesBox.setWindowTitle("Move Z to Focus?")
+                    mesBox.setIcon(QMessageBox.Question)
+                    mesBox.setText("Automatically set Z to focus?")
+                    mesBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                    returnValue = mesBox.exec()
+                    if returnValue == QMessageBox.Ok:
+                        if info['Z-Focus peak on'] == 'Retrace':
+                            self.Stage.z = peak_position + 20
+                        elif info['Z-Focus peak on'] == 'Trace':
+                            self.Stage.z = peak_position - 20
+                        while self.Stage.is_zmoving():
+                            pass
+                        self.stageZ.setValue(peak_position)
                 
         #print("Final laser position: {0} {1}".format(self.Gal._x,self.Gal._y))
         
