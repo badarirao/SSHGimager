@@ -110,7 +110,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -867,13 +867,13 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.Stage.ID == 'Fake':
             info.show()
             QTimer.singleShot(1000, loop.quit)
-            loop.exec_()
+            loop.exec()
         else:
             if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                 info.show()
                 while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                     QTimer.singleShot(100, loop.quit)
-                    loop.exec_()
+                    loop.exec()
         info.hide()
     
     """
@@ -921,16 +921,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if self.stopcall:
             return
         self.display_stagemove_msg()
-        self.stageX.setValue(self.xposition-BUF)
-        self.stageY.setValue(self.yposition-BUF)
-        self.stageZ.setValue(self.zposition-BUF)
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
-        self.stageX.setValue(self.xposition)
-        self.stageY.setValue(self.yposition)
-        self.stageZ.setValue(self.zposition)
-        while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
-            pass
+        self.Stage.x = self.xposition-BUF
+        self.Stage.y = self.yposition-BUF
+        self.Stage.z = self.zposition-BUF
+        self.display_stagemove_msg()
+        self.Stage.x = self.xposition
+        self.Stage.y = self.yposition
+        self.Stage.z = self.zposition
+        self.display_stagemove_msg()
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
@@ -1152,7 +1150,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 break
         fileName = info['File Name']
         for image in item:
-            if imageName in image.title:
+            if imageName.lower() in image.title.lower():
                 self.rimage = array(image)
                 self.rxpos = info['x-position']
                 self.rypos = info['y-position']

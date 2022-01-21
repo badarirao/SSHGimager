@@ -1060,7 +1060,6 @@ class ScanImage(QObject):
             sleep(0.1)
         set2speed(F=int(speed2))
         set1speed(F=int(speed1))
-        self.Gal.start_single_point_counter()
         iStart = 0
         iEnd = len(arr1)-1
         if scanKind == 1:
@@ -1076,7 +1075,7 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[0]+buffi)
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
-                        pass
+                        sleep(1)
                     #set1speed(F=int(speed1))
                     i = iStart
                 if self.stopCall:
@@ -1094,7 +1093,7 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     gotoP(arr1[-1]+buffi)
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
-                        pass
+                        sleep(1)
                     #set1speed(F=int(speed1))
                     i = iEnd
                 if self.stopCall:
@@ -1133,6 +1132,8 @@ class ScanImage(QObject):
                     gotoP(arr1[-1]+BUF)
                     sleep(0.1)
                     while True:
+                        p = arr1[i]
+                        q = arr2[j]
                         self.collect_3DSHG_secondSignal(goto,p,q,i,j,k)
                         i -= 1
                         if i < 0:
@@ -1167,7 +1168,6 @@ class ScanImage(QObject):
             sleep(0.1)
         set1speed(F=int(speed1))
         set2speed(F=int(speed2))
-        self.Gal.start_single_point_counter()
         jStart = 0
         jEnd = len(arr2)-1
         if scanKind == 1:
@@ -1244,7 +1244,6 @@ class ScanImage(QObject):
                         break
                 if self.stopCall:
                     break
-        self.Gal.stop_single_point_counter()
         set1speed(F=int(highspeed1))
         set2speed(F=int(highspeed2))
         goto(arr1[0],arr2[0])
