@@ -17,6 +17,7 @@ from galvanometer import Scan
 from ds102 import DS102
 from time import sleep
 
+BUF = 2
 class Select:
     X_Scan_Continuous_Galvano = 1
     X_Scan_Step_Galvano = 2 #not used
