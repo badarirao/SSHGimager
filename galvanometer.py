@@ -100,11 +100,11 @@ class Galvano():
     
     @property 
     def x(self):
-        return -self._x/self.xscale
+        return -(self._x-self.xhome)/self.xscale
     
     @x.setter 
     def x(self,value):
-        self._x = -value*self.xscale
+        self._x = -value*self.xscale+self.xhome
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -117,11 +117,11 @@ class Galvano():
              
     @property 
     def y(self):
-        return -self._y/self.yscale
+        return -(self._y-self.yhome)/self.yscale
     
     @y.setter
     def y(self,value):
-        self._y = -value*self.yscale
+        self._y = -value*self.yscale+self.yhome
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -133,8 +133,8 @@ class Galvano():
             self.taskxy.write([self._y,self._x])
         
     def gotoxy(self,x,y):
-        self._x = -x*self.xscale
-        self._y = -y*self.yscale
+        self._x = -x*self.xscale+self.xhome
+        self._y = -y*self.yscale+self.yhome
         try:
             self.taskxy.write([self._y,self._x])
         except DaqError as mes:
@@ -343,7 +343,7 @@ class Scan(Galvano):
         self.create_taskxy()
         self.startscan = False
         # move laser to home position
-        self.gotoxy(self.xhome/self.xscale,self.yhome/self.yscale)
+        self.gotoxy(0,0)
         #print('Executed gal stop scanxy')
         
     def start_single_point_counter(self):
