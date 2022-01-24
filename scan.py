@@ -26,6 +26,10 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
+NOTE: address.txt should exist in the same folder as the python program
+First line in address.txt contains path of the galvano and stage settings file.
+Second line contains path of the last used directory to save images.
+
 # TODO: Check definition of galvano xhome and yhome may have changed
 #TODO: Implement z-focus function
 #TODO: load and save scan parameters to file
@@ -110,7 +114,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -145,6 +149,17 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.statusBar().showMessage('Could not connect to stage, simulation mode running')
                 self.Gal.close_all_channels()
             self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake= True)
+        mesBox = QMessageBox(self)
+        mesBox.setWindowTitle("Choose save directory")
+        mesBox.setIcon(QMessageBox.Question)
+        mesBox.setText("Current save directory is: {}\nClick Ok to continue, or click change to change the save directory.".format(self.data_address))
+        changeBtn = mesBox.addButton('Change',mesBox.ActionRole)
+        mesBox.setStandardButtons(QMessageBox.Ok)
+        changeBtn.clicked.connect(self.change_save_directory)
+        mesBox.exec()
+        #returnValue = mesBox.exec()
+        #if returnValue == QMessageBox.Change:
+        #    self.change_save_directory()
     
     def update_screen(self):
         self.galvanodialog = galsetting()
@@ -170,6 +185,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 if not os.path.exists(self.defaultPath):
                     self.defaultPath = self.initialPath 
                 self.defaultPath += '\\SHG_Data'
+                self.data_address = self.defaultPath
                 if len(lines)>1:
                     lines[-1] = self.defaultPath
                 else:
@@ -240,6 +256,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.select_scan_area.clicked.connect(self.hideroiplot)
         self.actionGalvanometer.triggered.connect(self.setgalvano)
         self.actionExit.triggered.connect(self.close)
+        self.actionLoad_Parameters_from_file.triggered.connect(self.load_scan_params)
+        self.actionSave_current_parameters_to_file.triggered.connect(self.save_scan_params)
         self.actionSteppermotor.triggered.connect(self.setstage)
         self.xstep.valueChanged.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
         self.ystep.valueChanged.connect(lambda: self.steps_to_points(self.ysize,self.ystep,self.ypoints))
@@ -792,10 +810,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
     def initGalvano(self):
         self.Gal.xscale = self.galvanodialog.xscale
         self.Gal.yscale = self.galvanodialog.yscale
-        self.Gal.x = self.galvanodialog.xpos/self.galvanodialog.xscale
-        self.Gal.y = self.galvanodialog.ypos/self.galvanodialog.yscale
         self.Gal.xhome = self.galvanodialog.xpos
         self.Gal.yhome = self.galvanodialog.ypos
+        self.Gal.x = 0
+        self.Gal.y = 0
         if self.scan_type.currentIndex() == 0:
             self.update_sizelimits()
 
@@ -920,6 +938,29 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.initialize()
         if self.stopcall:
             return
+        self.stop_button.setEnabled(True)
+        self.start_button.setEnabled(False)
+        self.scan_type.setEnabled(False)
+        self.stageStop_Button.setEnabled(False)
+        self.sample_name.setEnabled(False)
+        self.comments.setEnabled(False)
+        self.xactive.setEnabled(False)
+        self.yactive.setEnabled(False)
+        self.zactive.setEnabled(False)
+        self.x_state_change(False)
+        self.y_state_change(False)
+        self.z_state_change(False)
+        self.stageX.setEnabled(False)
+        self.stageY.setEnabled(False)
+        self.stageZ.setEnabled(False)
+        self.toolButton_xhome.setEnabled(False)
+        self.toolButton_yhome.setEnabled(False)
+        self.toolButton_zhome.setEnabled(False)
+        self.tperstep_set.setEnabled(False)
+        self.srate_set.setEnabled(False)
+        self.scan_kind.setEnabled(False)
+        self.select_scan_area.setEnabled(False)
+        self.saveDir_button.setEnabled(False)
         self.display_stagemove_msg()
         self.Stage.x = self.xposition-BUF
         self.Stage.y = self.yposition-BUF
@@ -930,12 +971,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.Stage.z = self.zposition
         self.display_stagemove_msg()
         print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
-        self.stop_button.setEnabled(True)
-        self.start_button.setEnabled(False)
-        self.scan_type.setEnabled(False)
-        self.stageStop_Button.setEnabled(False)
-        self.sample_name.setEnabled(False)
-        self.comments.setEnabled(False)
         self.get_savefilename()
         self.draw_original_PlotType_menu()
         self.initiallevel = 0
@@ -1226,6 +1261,26 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         # be ready for next scan
         self.start_button.setEnabled(True)
         self.scan_type.setEnabled(True)
+        self.xactive.setEnabled(True)
+        self.yactive.setEnabled(True)
+        self.zactive.setEnabled(True)
+        self.x_state_change()
+        self.y_state_change()
+        self.z_state_change()
+        self.stageX.setEnabled(True)
+        self.stageY.setEnabled(True)
+        self.stageZ.setEnabled(True)
+        self.toolButton_xhome.setEnabled(True)
+        self.toolButton_yhome.setEnabled(True)
+        self.toolButton_zhome.setEnabled(True)
+        self.select_scan_area.setEnabled(True)
+        self.scan_kind.setEnabled(True)
+        self.saveDir_button.setEnabled(True)
+        if self.scan_type.currentIndex() == 1:
+            self.tperstep_set.setEnabled(True)
+        else:
+            self.srate_set.setEnabled(True)
+        self.select_scan_area.setEnabled(False)
         self.stop_button.setEnabled(False)
         self.stopcall = True
         self.comments.setEnabled(True)
@@ -1276,8 +1331,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 
         #print("Final laser position: {0} {1}".format(self.Gal._x,self.Gal._y))
         
-    def x_state_change(self):
-        if self.xactive.isChecked():
+    def x_state_change(self,state = True):
+        if self.xactive.isChecked() and state:
             self.xpos.setEnabled(True)
             self.xsize.setEnabled(True)
             self.xstep.setEnabled(True)
@@ -1290,8 +1345,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.xpoints.setEnabled(False)
             self.xscanorder.setEnabled(False)
     
-    def y_state_change(self):
-        if self.yactive.isChecked():
+    def y_state_change(self,state = True):
+        if self.yactive.isChecked() and state:
             self.ypos.setEnabled(True)
             self.ysize.setEnabled(True)
             self.ystep.setEnabled(True)
@@ -1304,8 +1359,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ypoints.setEnabled(False)
             self.yscanorder.setEnabled(False)
             
-    def z_state_change(self):
-        if self.zactive.isChecked():
+    def z_state_change(self,state = True):
+        if self.zactive.isChecked() and state:
             self.zpos.setEnabled(True)
             self.zsize.setEnabled(True)
             self.zstep.setEnabled(True)
@@ -1362,6 +1417,99 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             self.ysize.setDecimals(4)
             self.ysize.setSingleStep(0.1)
+    
+    def load_scan_params(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "","All Files (*);;Parameter Files (*.txt)", options=options)
+        if files:
+            with open(files[0],'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    l = line.split()
+                    key = l[0]
+                    value = l[2]
+                    if key == "xpos":
+                        self.xpos.setValue(int(value))
+                    elif key == "ypos":
+                        self.ypos.setValue(int(value))
+                    elif key == "zpos":
+                        self.zpos.setValue(int(value))
+                    elif key == "xsize":
+                        self.xsize.setValue(float(value))
+                    elif key == "ysize":
+                        self.ysize.setValue(float(value))
+                    elif key == "zsize":
+                        self.zsize.setValue(float(value))
+                    elif key == "xstep":
+                        self.xstep.setValue(float(value))
+                    elif key == "ystep":
+                        self.ystep.setValue(float(value))
+                    elif key == "zstep":
+                        self.zstep.setValue(float(value))
+                    elif key == "xpoints":
+                        self.xpoints.setValue(int(value))
+                    elif key == "ypoints":
+                        self.ypoints.setValue(int(value))
+                    elif key == "zpoints":
+                        self.zpoints.setValue(int(value))
+                    elif key == "xorder":
+                        self.xscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "yorder":
+                        self.yscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "zorder":
+                        self.zscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "scanRate":
+                        self.srate_set.setValue(float(value))
+                        self.tperstep_set.setValue(1/self.srate_set.value())
+                    elif key == "stageX":
+                        self.stageX.setValue(int(value))
+                    elif key == "stageY":
+                        self.stageY.setValue(int(value))
+                    elif key == "stageZ":
+                        self.stageZ.setValue(int(value))
+                    elif key.lower() == "filename":
+                        self.sample_name.setText(value)
+                    elif key.lower() == "scankind":
+                        self.scan_kind.setCurrentIndex(int(value))
+                    elif key.lower() == "scantype":
+                        self.scan_type.setCurrentIndex(int(value))
+    
+    def save_scan_params(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        file, _ = QtWidgets.QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Parameter Files (*.prm)", options=options)
+        lines = []
+        if file:
+            if file.find('.') == -1:
+                file = file + '.prm'
+            else:
+                index = file.rindex('.')
+                file = file[:index] + '.prm'
+            lines.append("FileName = "+self.sample_name.text()+"\n")
+            lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
+            lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("xpos = "+str(self.xpos.value())+"\n")
+            lines.append("ypos = "+str(self.ypos.value())+"\n")
+            lines.append("zpos = "+str(self.zpos.value())+"\n")
+            lines.append("xsize = "+str(self.xsize.value())+"\n")
+            lines.append("ysize = "+str(self.ysize.value())+"\n")
+            lines.append("zsize = "+str(self.zsize.value())+"\n")
+            lines.append("xstep = "+str(self.xstep.value())+"\n")
+            lines.append("ystep = "+str(self.ystep.value())+"\n")
+            lines.append("zstep = "+str(self.zstep.value())+"\n")
+            lines.append("xpoints = "+str(self.xpoints.value())+"\n")
+            lines.append("ypoints = "+str(self.ypoints.value())+"\n")
+            lines.append("zpoints = "+str(self.zpoints.value())+"\n")
+            lines.append("xorder = "+str(self.xscanorder.currentIndex()+1)+"\n")
+            lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
+            lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
+            lines.append("scanRate = "+str(self.srate_set.value())+"\n")
+            lines.append("stageX = "+str(self.stageX.value())+"\n")
+            lines.append("stageY = "+str(self.stageY.value())+"\n")
+            lines.append("stageZ = "+str(self.stageZ.value())+"\n")
+            with open(file,'w') as f:
+                f.writelines(lines)
     
     def deleteCollection(self):
         self.collection = []
