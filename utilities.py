@@ -18,7 +18,9 @@ from ds102 import DS102
 from time import sleep
 from glob import glob
 
-BUF = 2
+# Need to optimize BUF so that image edges are not scarred
+BUF = 5
+
 class Select:
     X_Scan_Continuous_Galvano = 1
     X_Scan_Step_Galvano = 2 #not used
@@ -75,6 +77,10 @@ class Select:
     YXZ_Scan_Step_Galvano = 42 #not used
     YXZ_Scan_Continuous_Stage = 43 #not used
     YXZ_Scan_Step_Stage = 44
+    
+    # Special scan for reflection mode
+    ZXY_Scan_Step_Stage = 45
+    ZYX_Scan_Step_Stage = 46
     
     def scanName(ID):
         if ID == 1:
@@ -165,6 +171,10 @@ class Select:
             return 'YXZ_Scan_Continuous_Stage'
         elif ID == 44:
             return 'YXZ_Scan_Step_Stage'
+        elif ID == 45:
+            return 'ZXY_Scan_Step_Stage'
+        elif ID == 46:
+            return 'ZYX_Scan_Step_Stage'
     
 class MonitorStage(QThread):
     def __init__(self, Stage, parent=None):
