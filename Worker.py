@@ -112,8 +112,8 @@ class ScanImage(QObject):
         info = sidpy.Dataset.from_array([-1])
         self.fullfilename = unique_filename(directory='.',prefix=self.filename,datetimeformat="",ext='shg'+'{}D'.format(self.nd))
         self.endtime = datetime.now()
-        self.starttime.replace(microsecond=0)
-        self.endtime.replace(microsecond=0)
+        self.starttime = self.starttime.replace(microsecond=0)
+        self.endtime = self.endtime.replace(microsecond=0)
         scanTime = str(self.endtime - self.starttime)
         info.title = 'Scan Info'
         if self.scancomplete:
@@ -255,7 +255,7 @@ class ScanImage(QObject):
                 shgData2.data_type = 'image_stack'
                 refData2.data_type = 'image_stack'
                 imgData2.data_type = 'image_stack'                
-            if self.scanNum in range(37,45): # xyz-scan
+            if self.scanNum in range(37,46): # xyz-scan
                 shgData.set_dimension(0, sidpy.Dimension(zarr, 'cAxis'))
                 shgData.set_dimension(1, sidpy.Dimension(xarr, 'aAxis'))
                 shgData.set_dimension(2, sidpy.Dimension(yarr, 'bAxis'))
@@ -318,17 +318,17 @@ class ScanImage(QObject):
                 info.metadata['bAxis'] = {'Axis': 'Y', 'Points': self.ypoints, 'Position': self.ypos, 'Scale': self.yscale, 'Size': self.ysize}
             elif shgData.bAxis.quantity == 'Z':
                 info.metadata['bAxis'] = {'Axis': 'Z', 'Points': self.zpoints, 'Position': self.zpos, 'Scale': self.zscale, 'Size': self.zsize}
-            shgData.cAxis.dimension_type = 'spatial'
-            refData.cAxis.dimension_type = 'spatial'
-            imgData.cAxis.dimension_type = 'spatial'
+            shgData.cAxis.dimension_type = 'temporal'
+            refData.cAxis.dimension_type = 'temporal'
+            imgData.cAxis.dimension_type = 'temporal'
             shgData.cAxis.units = 'μm'
             refData.cAxis.units = 'μm'
             imgData.cAxis.units = 'μm'
             if shgData.cAxis.quantity == 'X':
                 info.metadata['cAxis'] = {'Axis': 'X', 'Points': self.xpoints, 'Position': self.xpos, 'Scale': self.xscale, 'Size': self.xsize}
-            elif shgData.aAxis.quantity == 'Y':
+            elif shgData.cAxis.quantity == 'Y':
                 info.metadata['cAxis'] = {'Axis': 'Y', 'Points': self.ypoints, 'Position': self.ypos, 'Scale': self.yscale, 'Size': self.ysize}
-            elif shgData.aAxis.quantity == 'Z':
+            elif shgData.cAxis.quantity == 'Z':
                 info.metadata['cAxis'] = {'Axis': 'Z', 'Points': self.zpoints, 'Position': self.zpos, 'Scale': self.zscale, 'Size': self.zsize}
         except Exception:
             pass
@@ -346,9 +346,9 @@ class ScanImage(QObject):
                 shgData2.bAxis.units = 'μm'
                 refData2.bAxis.units = 'μm'
                 imgData2.bAxis.units = 'μm'
-                shgData2.cAxis.dimension_type = 'spatial'
-                refData2.cAxis.dimension_type = 'spatial'
-                imgData2.cAxis.dimension_type = 'spatial'
+                shgData2.cAxis.dimension_type = 'temporal'
+                refData2.cAxis.dimension_type = 'temporal'
+                imgData2.cAxis.dimension_type = 'temporal'
                 shgData2.cAxis.units = 'μm'
                 refData2.cAxis.units = 'μm'
                 imgData2.cAxis.units = 'μm'
@@ -574,6 +574,9 @@ class ScanImage(QObject):
         elif self.scanNum == Select.YXZ_Scan_Step_Stage:
             self.initialData.emit(['3D YXZ-scan using Stage', 'x (μm)','y (μm)','z (μm)',self.xscale,self.yscale,array(self.zarr)])
             self.YXZ_Scan_Step_Stage()
+        elif self.scanNum == Select.ZXY_Scan_Step_Stage:
+            self.initialData.emit(['3D ZXY-scan using Stage', 'x (μm)','y (μm)','z (μm)',self.xscale,self.yscale,array(self.zarr)])
+            self.ZXY_Scan_Step_Stage()
     
     def scan1D_Stage(self,goto,setSpeed,arr,speed,highSpeed,stage_is_moving):
         lData = []
@@ -695,7 +698,10 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     i = iStart
                     gotoP(arr1[i]-buffi)
-                    sleep(size/speed1+0.1)
+                    sleep((size+BUF)/speed1+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                        pass
+                    gotoP(arr1[i])                
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                         pass
                     #set1speed(F=int(speed1))
@@ -715,7 +721,10 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     i = iEnd
                     gotoP(arr1[i]+buffi)
-                    sleep(size/speed1+0.1)
+                    sleep((size+BUF)/speed1+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                        pass
+                    gotoP(arr1[i])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                         pass
                     #set1speed(F=int(speed1))
@@ -824,7 +833,10 @@ class ScanImage(QObject):
                     #set2speed(F=int(highspeed2))
                     j = jStart
                     gotoQ(arr2[j]-buffj)
-                    sleep(size/speed2+0.1)
+                    sleep((size+BUF)/speed2+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                        pass
+                    gotoQ(arr2[j])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                         pass
                     #set2speed(F=int(speed2))
@@ -844,7 +856,10 @@ class ScanImage(QObject):
                     #set2speed(F=int(highspeed2))
                     j = jEnd
                     gotoQ(arr2[j]+buffj)
-                    sleep(size/speed2+0.1)
+                    sleep((size+BUF)/speed2+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                        pass
+                    gotoQ(arr2[j])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                         pass
                     #set2speed(F=int(speed2))
@@ -1096,7 +1111,10 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     i = iStart
                     gotoP(arr1[i]-buffi)
-                    sleep(size/speed1+0.1)
+                    sleep((size+BUF)/speed1+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                        pass
+                    gotoP(arr1[i])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set1speed(F=int(speed1))
@@ -1115,7 +1133,10 @@ class ScanImage(QObject):
                     #set1speed(F=int(highspeed1))
                     i = iEnd
                     gotoP(arr1[i]+buffi)
-                    sleep(size/speed2+0.1)
+                    sleep((size+BUF)/speed1+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                        pass
+                    gotoP(arr1[i])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set1speed(F=int(speed1))
@@ -1211,7 +1232,10 @@ class ScanImage(QObject):
                     #set2speed(F=int(highspeed2))
                     j = jStart
                     gotoQ(arr2[j]-buffj)
-                    sleep(size/speed2+0.1)
+                    sleep((size+BUF)/speed2+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                        pass
+                    gotoQ(arr2[j])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set2speed(F=int(speed2))
@@ -1230,7 +1254,10 @@ class ScanImage(QObject):
                     #set2speed(F=int(highspeed2))
                     j = jEnd
                     gotoQ(arr2[j]+buffj)
-                    sleep(size/speed2+0.1)
+                    sleep((size+BUF)/speed2+0.1)
+                    while self.Stage.is_xmoving() or self.Stage.is_ymoving():
+                        pass
+                    gotoQ(arr2[j])
                     while self.Stage.is_xmoving() or self.Stage.is_ymoving():
                         pass
                     #set2speed(F=int(speed2))
@@ -1356,6 +1383,52 @@ class ScanImage(QObject):
         self.saveData()
         self.stop_program()
     
+    def ZXY_Scan_Step_Stage(self):
+        print("starting zxy scan ")
+        self.shgData = zeros((len(self.zarr),len(self.xarr),len(self.yarr)))
+        self.refData = -ones_like(self.shgData)
+        self.imgData = ones_like(self.shgData)
+        self.Gal.start_single_point_counter()
+        for j,y in enumerate(self.yarr):
+            self.Stage.goto_y(y)
+            for i,x in enumerate(self.xarr):
+                self.Stage.goto_x(x)
+                for k,z in enumerate(self.zarr):
+                    self.Stage.goto_z(z)
+                    c,r = self.Gal.readCounts()
+                    img = c/r
+                    self.shgData[k,i,j] = c
+                    self.refData[k,i,j] = r
+                    self.imgData[k,i,j] = img
+                    if self.stopCall:
+                        break
+                if self.stopCall:
+                    break
+                self.imageData.emit([self.shgData[0,:,:],self.refData[0,:,:],self.imgData[0,:,:]])
+                self.Stage.goto_z(self.zarr[0]-BUF)
+                sleep((self.zsize+BUF)/self.zspeed)
+                while self.Stage.is_zmoving():
+                    pass
+                self.Stage.goto_z(self.zarr[0])
+                while self.Stage.is_zmoving():
+                    pass
+            if self.stopCall:
+                break
+            self.Stage.goto_x(self.xarr[0]-BUF)
+            sleep((self.xsize+BUF)/self.xspeed)
+            while self.Stage.is_xmoving():
+                pass
+            self.Stage.goto_x(self.xarr[0])
+            while self.Stage.is_xmoving():
+                pass
+        if not self.stopCall:
+            self.scancomplete = True
+        self.imageData3D.emit([self.shgData,self.refData,self.imgData])
+        self.Gal.stop_single_point_counter()
+        self.Stage.set_zspeed(F=int(self.zhighspeed))
+        self.saveData()
+        self.stop_program()
+                    
     def stop_program(self):
         if self.scanNum in (29,30,37):
             self.Gal.stop_scanxy()
