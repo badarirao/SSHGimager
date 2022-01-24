@@ -35,7 +35,7 @@ if __name__ == "__main__":
         os.mkdir(converted_path)
     for root, dirs, files in os.walk('.'):
         for file in files:
-            if file.endswith(".shg") or file.endswith(".shg1D") or file.endswith(".shg2D") or file.endswith(".shg.3D"):
+            if file.endswith(".shg") or file.endswith(".shg1D") or file.endswith(".shg2D") or file.endswith(".shg3D"):
                 try:
                     dataSet = NSIDReader(file).read()
                     dataSet[0].h5_dataset.file.close()

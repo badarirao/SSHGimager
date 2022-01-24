@@ -124,7 +124,7 @@ class ScanImage(QObject):
             mode = "Transmission"
         elif self.scan_mode == 1:
             mode = "Reflection"
-        info.metadata = {'File Name': self.fullfilename.split('\\')[-1][:-4],
+        info.metadata = {'File Name': self.fullfilename.split('\\')[-1].split(".")[0],
                          'Scan Type':Select.scanName(self.scanNum),
                          'Scan Kind':self.getScanKind(self.scanKind),
                          'Scan Mode': mode,

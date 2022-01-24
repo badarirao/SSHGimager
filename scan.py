@@ -114,7 +114,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -1593,7 +1593,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             else:
                 index = file.rindex('.')
                 file = file[:index] + '.prm'
-            lines.append("FileName = "+self.sample_name.text()+"\n")
             lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
             lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
             lines.append("xpos = "+str(self.xpos.value())+"\n")
@@ -1612,9 +1611,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
             lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
             lines.append("scanRate = "+str(self.srate_set.value())+"\n")
-            lines.append("stageX = "+str(self.stageX.value())+"\n")
-            lines.append("stageY = "+str(self.stageY.value())+"\n")
-            lines.append("stageZ = "+str(self.stageZ.value())+"\n")
             with open(file,'w') as f:
                 f.writelines(lines)
     
