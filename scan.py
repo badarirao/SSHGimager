@@ -114,7 +114,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -466,6 +466,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.select_scan_area.setChecked(False)
             return
         if self.select_scan_area.isChecked():
+            if len(self.rimage.shape) == 3:
+                #print(self.ref_plot.currentIndex)
+                self.curr_ref_index = self.ref_plot.currentIndex
+                imageSlice = self.rimage[self.curr_ref_index,:,:]
+                self.ref_plot.setImage(imageSlice,pos=[0,0],scale=[self.rascale,self.rbscale],autoLevels=False)
             if self.ref_plot.ui.roiBtn.isChecked():
                 self.ref_plot.ui.roiBtn.setChecked(False)
             self.ref_plot.roi.show()
@@ -477,6 +482,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ref_plot.ui.roiPlot.hide()
             self.getroidata()
         else:
+            if len(self.rimage.shape) == 3:
+                self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale],xvals = self.rcAxis,autoLevels=False)
+                self.ref_plot.setCurrentIndex(self.curr_ref_index)
             self.ref_plot.roi.hide()
             self.ref_plot.roi.rotateAllowed = True
             self.ref_plot.roi.addRotateHandle([0, 0], [0.5, 0.5])
@@ -555,13 +563,18 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 elif self.xscanorder.currentIndex() == 1:
                     self.yscanorder.setCurrentIndex(0)
         elif self.nd == 3:
-            self.zscanorder.setCurrentIndex(2)
-            if self.xscanorder.currentIndex() == 0:
-                self.yscanorder.setCurrentIndex(1)
-            elif self.xscanorder.currentIndex() == 1:
-                self.yscanorder.setCurrentIndex(0)
+            if self.zscanorder.currentIndex() == 0:
+                self.xscanorder.setCurrentIndex(1)
+                self.yscanorder.setCurrentIndex(2)
+            else:
+                self.zscanorder.setCurrentIndex(2)
+                if self.xscanorder.currentIndex() == 0:
+                    self.yscanorder.setCurrentIndex(1)
+                elif self.xscanorder.currentIndex() == 1:
+                    self.yscanorder.setCurrentIndex(0)
             
     def initialize(self):
+        self.selectScanMethod()
         self.xposition = int(self.xpos.value())
         self.yposition = int(self.ypos.value())
         self.zposition = int(self.zpos.value())
@@ -766,7 +779,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.b0, self.b1, self.bsize  = self.y0, self.y1, self.ysize.value()
             self.c0, self.c1, self.csize  = self.z0, self.z1, self.zsize.value()
             self.ascale, self.bscale, self.cscale  = self.xscale, self.yscale, self.zscale
-            if self.scan_type.currentIndex() == 0:
+            if self.scan_type.currentIndex() == 0: # Laser Scan
                 if self.scan_method == 0:
                     if self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Continuous_Galvano
@@ -777,14 +790,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scanNum = Select.XYZ_Scan_Step_Galvano
                     else:
                         self.scanNum = Select.YXZ_Scan_Step_Galvano
-            else:
-                if self.scan_method == 0:
+            else: # Stage Scan
+                if self.scan_method == 0: # continuous scan
                     if self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Continuous_Stage
                     else:
                         self.scanNum = Select.YXZ_Scan_Continuous_Stage
-                else:
-                    if self.xscanorder.currentIndex() == 0:
+                else: # step scan
+                    if self.zscanorder.currentIndex() == 0:
+                        self.scanNum = Select.ZXY_Scan_Step_Stage
+                    elif self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Step_Stage
                     else:
                         self.scanNum = Select.YXZ_Scan_Step_Stage
@@ -926,6 +941,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         
     def selectScanMethod(self):
         i = self.scan_kind.currentIndex()
+        if self.zscanorder.currentIndex() == 0:
+            self.scan_kind.setCurrentIndex(0)
         if not self.autochange:
             self.original_scanKind = i
         if i == 0:
@@ -974,6 +991,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.tperstep_set.setEnabled(False)
         self.srate_set.setEnabled(False)
         self.scan_kind.setEnabled(False)
+        self.scan_mode.setEnabled(False)
         self.select_scan_area.setEnabled(False)
         self.saveDir_button.setEnabled(False)
         self.display_stagemove_msg()
@@ -1125,6 +1143,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         for dset in dataSet:
             if dset.modality == 'Scan Information':
                 info = dset.metadata['metadata']
+                if 'metadata' in info.keys():
+                    info = info['metadata']
                 break
         self.imageData = [[]]
         l = 0
@@ -1236,7 +1256,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.ref_plot1d.hide()
                         self.ref_plot.show()
                     self.ref_plot.view.setLabels(**labels)
-                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[info['aAxis']['Scale'],info['bAxis']['Scale']])                        
+                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale])
                     self.ref_plot.view.setTitle("Scan Collection"+'<br><font size="-0.5" color="white">'+fileName+', '+imageName+ ' Image')
                 elif info['Dimension'] == 3:
                     self.rbAx = info['bAxis']['Axis']
@@ -1253,7 +1273,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.ref_plot1d.hide()
                         self.ref_plot.show()
                     self.ref_plot.view.setLabels(**labels)
-                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[info['aAxis']['Scale'],info['bAxis']['Scale']],xvals = self.rcAxis)
+                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale],xvals = self.rcAxis)
+                    self.ref_plot.setCurrentIndex(0)
                     self.ref_plot.view.setTitle("Scan Collection"+'<br><font size="-0.5" color="white">'+fileName+', '+imageName+ ' Image')
                 break
 
@@ -1291,6 +1312,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.toolButton_zhome.setEnabled(True)
         self.select_scan_area.setEnabled(True)
         self.scan_kind.setEnabled(True)
+        self.scan_mode.setEnabled(True)
         self.saveDir_button.setEnabled(True)
         if self.scan_type.currentIndex() == 1:
             self.tperstep_set.setEnabled(True)
@@ -1490,6 +1512,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scan_kind.setCurrentIndex(int(value))
                     elif key.lower() == "scantype":
                         self.scan_type.setCurrentIndex(int(value))
+                    elif key.lower() == "scanmode":
+                        self.scan_mode.setCurrentIndex(int(value))
     
     def load_default_scan_params(self):
         file = self.setting_address+"\default_params.prm"
@@ -1545,6 +1569,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scan_kind.setCurrentIndex(int(value))
                     elif key.lower() == "scantype":
                         self.scan_type.setCurrentIndex(int(value))
+                    elif key.lower() == "scanmode":
+                        self.scan_mode.setCurrentIndex(int(value))
         else:
             print("Default parameter file not found.")
     
@@ -1562,6 +1588,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("FileName = "+self.sample_name.text()+"\n")
             lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
             lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
             lines.append("xpos = "+str(self.xpos.value())+"\n")
             lines.append("ypos = "+str(self.ypos.value())+"\n")
             lines.append("zpos = "+str(self.zpos.value())+"\n")
@@ -1595,6 +1622,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 file = file[:index] + '.prm'
             lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
             lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
             lines.append("xpos = "+str(self.xpos.value())+"\n")
             lines.append("ypos = "+str(self.ypos.value())+"\n")
             lines.append("zpos = "+str(self.zpos.value())+"\n")
@@ -1613,8 +1641,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("scanRate = "+str(self.srate_set.value())+"\n")
             with open(file,'w') as f:
                 f.writelines(lines)
-    
-    
     
     def deleteCollection(self):
         self.collection = []
