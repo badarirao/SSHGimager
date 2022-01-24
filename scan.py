@@ -167,10 +167,12 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ds102dialog = ds102setting()
         self.ds102dialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.initialPath = os.getcwd()
+        self.setting_address = "."
         if os.path.isfile('address.txt'):
             with open('address.txt','r') as f:
                 lines = f.readlines()
                 if len(lines) > 0:
+                    self.setting_address = lines[0].rstrip()
                     try:
                         self.data_address = lines[1]
                     except:
@@ -246,6 +248,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.scan_type.currentIndexChanged.connect(self.scan_type_change)
         self.plot_type.currentIndexChanged.connect(self.selectPlotType)
         self.scan_kind.currentIndexChanged.connect(self.selectScanMethod)
+        self.scan_mode.currentIndexChanged.connect(self.selectScanMode)
         self.start_button.clicked.connect(self.run_program)
         self.stop_button.clicked.connect(self.stop_program)
         self.loadImage_button.clicked.connect(self.load_image_from_file)
@@ -258,6 +261,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.actionExit.triggered.connect(self.close)
         self.actionLoad_Parameters_from_file.triggered.connect(self.load_scan_params)
         self.actionSave_current_parameters_to_file.triggered.connect(self.save_scan_params)
+        self.actionReset_to_default_parameters.triggered.connect(self.load_default_scan_params)
+        self.actionSet_current_parameters_as_default.triggered.connect(self.setDefault_scan_params)
         self.actionSteppermotor.triggered.connect(self.setstage)
         self.xstep.valueChanged.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
         self.ystep.valueChanged.connect(lambda: self.steps_to_points(self.ysize,self.ystep,self.ypoints))
@@ -279,7 +284,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.liveplot.view.scene().sigMouseMoved.connect(self.printliveplot_MousePos)
         self.ref_plot.view.scene().sigMouseMoved.connect(self.printrefplot_MousePos)
         self.liveplot.ui.roiBtn.hide()
-        self.scan_mode.setEnabled(False)  # currently disable selecting scan mode
         self.sample_name.setText(self.filename)
         self.sample_name.textChanged.connect(self.updatefile)
         self.toolButton_xhome.clicked.connect(self.gohome_xstage)
@@ -933,6 +937,17 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         elif i == 3:
             self.scanKind = 2
         
+    def selectScanMode(self):
+        # Select reflection or transmission mode.
+        # Currently only disable laser scan for reflection mode.
+        # Later you can add any other modifications as required.
+        i = self.scan_mode.currentIndex()
+        if i == 1:
+            self.scan_type.setCurrentIndex(1)
+            self.scan_type.model().item(0).setEnabled(False)
+        else:
+            self.scan_type.model().item(0).setEnabled(True)
+            
     def run_program(self):
         self.stopcall = False
         self.initialize()
@@ -995,6 +1010,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                            self.ds102dialog.yspeed,
                            self.ds102dialog.zspeed,
                            self.scanKind,
+                           self.scan_mode.currentIndex(),
                            self.comments.toPlainText()
                            ]
         # start Thread
@@ -1430,11 +1446,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                     key = l[0]
                     value = l[2]
                     if key == "xpos":
-                        self.xpos.setValue(int(value))
+                        self.xpos.setValue(int(float(value)))
                     elif key == "ypos":
-                        self.ypos.setValue(int(value))
+                        self.ypos.setValue(int(float(value)))
                     elif key == "zpos":
-                        self.zpos.setValue(int(value))
+                        self.zpos.setValue(int(float(value)))
                     elif key == "xsize":
                         self.xsize.setValue(float(value))
                     elif key == "ysize":
@@ -1448,11 +1464,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                     elif key == "zstep":
                         self.zstep.setValue(float(value))
                     elif key == "xpoints":
-                        self.xpoints.setValue(int(value))
+                        self.xpoints.setValue(int(float(value)))
                     elif key == "ypoints":
-                        self.ypoints.setValue(int(value))
+                        self.ypoints.setValue(int(float(value)))
                     elif key == "zpoints":
-                        self.zpoints.setValue(int(value))
+                        self.zpoints.setValue(int(float(value)))
                     elif key == "xorder":
                         self.xscanorder.setCurrentIndex(int(value)-1)
                     elif key == "yorder":
@@ -1463,17 +1479,74 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.srate_set.setValue(float(value))
                         self.tperstep_set.setValue(1/self.srate_set.value())
                     elif key == "stageX":
-                        self.stageX.setValue(int(value))
+                        self.stageX.setValue(int(float(value)))
                     elif key == "stageY":
-                        self.stageY.setValue(int(value))
+                        self.stageY.setValue(int(float(value)))
                     elif key == "stageZ":
-                        self.stageZ.setValue(int(value))
+                        self.stageZ.setValue(int(float(value)))
                     elif key.lower() == "filename":
                         self.sample_name.setText(value)
                     elif key.lower() == "scankind":
                         self.scan_kind.setCurrentIndex(int(value))
                     elif key.lower() == "scantype":
                         self.scan_type.setCurrentIndex(int(value))
+    
+    def load_default_scan_params(self):
+        file = self.setting_address+"\default_params.prm"
+        if os.path.isfile(file):
+            with open(file,'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    l = line.split()
+                    key = l[0]
+                    value = l[2]
+                    if key == "xpos":
+                        self.xpos.setValue(int(float(value)))
+                    elif key == "ypos":
+                        self.ypos.setValue(int(float(value)))
+                    elif key == "zpos":
+                        self.zpos.setValue(int(float(value)))
+                    elif key == "xsize":
+                        self.xsize.setValue(float(value))
+                    elif key == "ysize":
+                        self.ysize.setValue(float(value))
+                    elif key == "zsize":
+                        self.zsize.setValue(float(value))
+                    elif key == "xstep":
+                        self.xstep.setValue(float(value))
+                    elif key == "ystep":
+                        self.ystep.setValue(float(value))
+                    elif key == "zstep":
+                        self.zstep.setValue(float(value))
+                    elif key == "xpoints":
+                        self.xpoints.setValue(int(float(value)))
+                    elif key == "ypoints":
+                        self.ypoints.setValue(int(float(value)))
+                    elif key == "zpoints":
+                        self.zpoints.setValue(int(float(value)))
+                    elif key == "xorder":
+                        self.xscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "yorder":
+                        self.yscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "zorder":
+                        self.zscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "scanRate":
+                        self.srate_set.setValue(float(value))
+                        self.tperstep_set.setValue(1/self.srate_set.value())
+                    elif key == "stageX":
+                        self.stageX.setValue(int(float(value)))
+                    elif key == "stageY":
+                        self.stageY.setValue(int(float(value)))
+                    elif key == "stageZ":
+                        self.stageZ.setValue(int(float(value)))
+                    elif key.lower() == "filename":
+                        self.sample_name.setText(value)
+                    elif key.lower() == "scankind":
+                        self.scan_kind.setCurrentIndex(int(value))
+                    elif key.lower() == "scantype":
+                        self.scan_type.setCurrentIndex(int(value))
+        else:
+            print("Default parameter file not found.")
     
     def save_scan_params(self):
         options = QtWidgets.QFileDialog.Options()
@@ -1510,6 +1583,42 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("stageZ = "+str(self.stageZ.value())+"\n")
             with open(file,'w') as f:
                 f.writelines(lines)
+    
+    def setDefault_scan_params(self):
+        file = self.setting_address+"\default_params"
+        lines = []
+        if file:
+            if file.find('.') == -1:
+                file = file + '.prm'
+            else:
+                index = file.rindex('.')
+                file = file[:index] + '.prm'
+            lines.append("FileName = "+self.sample_name.text()+"\n")
+            lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
+            lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("xpos = "+str(self.xpos.value())+"\n")
+            lines.append("ypos = "+str(self.ypos.value())+"\n")
+            lines.append("zpos = "+str(self.zpos.value())+"\n")
+            lines.append("xsize = "+str(self.xsize.value())+"\n")
+            lines.append("ysize = "+str(self.ysize.value())+"\n")
+            lines.append("zsize = "+str(self.zsize.value())+"\n")
+            lines.append("xstep = "+str(self.xstep.value())+"\n")
+            lines.append("ystep = "+str(self.ystep.value())+"\n")
+            lines.append("zstep = "+str(self.zstep.value())+"\n")
+            lines.append("xpoints = "+str(self.xpoints.value())+"\n")
+            lines.append("ypoints = "+str(self.ypoints.value())+"\n")
+            lines.append("zpoints = "+str(self.zpoints.value())+"\n")
+            lines.append("xorder = "+str(self.xscanorder.currentIndex()+1)+"\n")
+            lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
+            lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
+            lines.append("scanRate = "+str(self.srate_set.value())+"\n")
+            lines.append("stageX = "+str(self.stageX.value())+"\n")
+            lines.append("stageY = "+str(self.stageY.value())+"\n")
+            lines.append("stageZ = "+str(self.stageZ.value())+"\n")
+            with open(file,'w') as f:
+                f.writelines(lines)
+    
+    
     
     def deleteCollection(self):
         self.collection = []
