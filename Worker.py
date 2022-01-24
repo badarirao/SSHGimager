@@ -58,7 +58,8 @@ class ScanImage(QObject):
         self.yhighspeed = scanParams[16]
         self.zhighspeed = scanParams[17]
         self.scanKind = scanParams[18]
-        self.comment = scanParams[19]
+        self.scan_mode = scanParams[19]
+        self.comment = scanParams[20]
         self.Gal.srate = self.srate
         self.xarr = list(linspace(self.xpos,self.xpos+self.xsize,self.xpoints,dtype=int))
         self.yarr = list(linspace(self.ypos,self.ypos+self.ysize,self.ypoints,dtype=int))
@@ -119,9 +120,14 @@ class ScanImage(QObject):
             scan_complete_status = 'Yes'
         else:
             scan_complete_status = 'Aborted'
+        if self.scan_mode == 0:
+            mode = "Transmission"
+        elif self.scan_mode == 1:
+            mode = "Reflection"
         info.metadata = {'File Name': self.fullfilename.split('\\')[-1][:-4],
                          'Scan Type':Select.scanName(self.scanNum),
                          'Scan Kind':self.getScanKind(self.scanKind),
+                         'Scan Mode': mode,
                          'Scan Speed': self.srate,
                          'Date & Time': self.endtime.strftime("%d/%m/%Y %H:%M:%S"),
                          'Total Scan Time': scanTime,
