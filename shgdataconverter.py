@@ -30,9 +30,12 @@ if __name__ == "__main__":
         else:
             ispath = False
     os.chdir(pathname)
+    converted_path = ".\Converted"
+    if not os.path.isdir(converted_path):
+        os.mkdir(converted_path)
     for root, dirs, files in os.walk('.'):
         for file in files:
-            if file.endswith(".shg"):
+            if file.endswith(".shg") or file.endswith(".shg1D") or file.endswith(".shg2D") or file.endswith(".shg.3D"):
                 try:
                     dataSet = NSIDReader(file).read()
                     dataSet[0].h5_dataset.file.close()
@@ -43,7 +46,7 @@ if __name__ == "__main__":
                 for dset in dataSet:
                     if 'scan information' in dset.modality.lower():
                         info = dset.metadata['metadata']
-                        with open(info['File Name']+'_info.txt','w') as f:
+                        with open('.\Converted\\'+info['File Name']+'_info.txt','w') as f:
                             for key,value in info.items():
                                 if 'comment' in key.lower():
                                     f.write('{0}\n'.format(value))
@@ -52,7 +55,7 @@ if __name__ == "__main__":
                 for dset in dataSet:
                     if 'scan information' not in dset.modality.lower():
                         arr = array(dset)
-                        filename = info['File Name'] + '_' + dset.title.split('/')[-1] + '.txt'
+                        filename = '.\Converted\\'+info['File Name'] + '_' + dset.title.split('/')[-1] + '.txt'
                         if info['Dimension'] == 1:
                             xarr = array(dset.aAxis)
                             whole_data = column_stack((xarr,arr))
@@ -73,4 +76,5 @@ if __name__ == "__main__":
                             for i in range(arr.shape[0]):
                                 arr2D = arr[i,:,:]
                                 savetxt(filename,arr2D,fmt='%g',delimiter='\t')
-                                f.write(b'\n\n')
+                                with open(filename,'a') as f:
+                                    f.write('\n\n')
