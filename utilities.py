@@ -16,6 +16,7 @@ from nidaqmx.errors import DaqError
 from galvanometer import Scan
 from ds102 import DS102
 from time import sleep
+from glob import glob
 
 BUF = 2
 class Select:
@@ -464,9 +465,18 @@ def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
         i = 1
         basename = "%s%s" % (prefix, now.strftime(datetimeformat))
         basepath = join(directory, basename)
+        for file in glob(basepath+"*.*"):
+            try:
+                ind = int(file.split(".")[-2].split("_")[-1])
+                if  ind > i:
+                    i = ind
+            except:
+                break
+        basefilename = "%s_%d%s" % (basepath, i, suffix)
         filename = "%s_%d%s.%s" % (basepath, i, suffix, ext)
-        while exists(filename):
+        while glob(basefilename+".*"):
             i += 1
+            basefilename = "%s_%d%s" % (basepath, i, suffix)
             filename = "%s_%d%s.%s" % (basepath, i, suffix, ext)
     else:
         basename = "%s%s%s.%s" % (
