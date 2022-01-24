@@ -363,7 +363,7 @@ class Scan(Galvano):
                                                     samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
         writer = stream_writers.AnalogSingleChannelWriter(self.taskx.out_stream)
-        data = array((self._x,self._x),dtype=float)
+        data = array((self._y,self._y),dtype=float)
         writer.write_many_sample(data)
         self.reference.start()
         # first just try to see if the pulse generator works fine.
