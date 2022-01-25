@@ -1474,6 +1474,12 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.ypos.setValue(int(float(value)))
                     elif key == "zpos":
                         self.zpos.setValue(int(float(value)))
+                    elif key == "xactive":
+                        self.xactive.setChecked(bool(value))
+                    elif key == "yactive":
+                        self.yactive.setChecked(bool(value))
+                    elif key == "zactive":
+                        self.zactive.setChecked(bool(value))
                     elif key == "xsize":
                         self.xsize.setValue(float(value))
                     elif key == "ysize":
@@ -1515,7 +1521,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scan_type.setCurrentIndex(int(value))
                     elif key.lower() == "scanmode":
                         self.scan_mode.setCurrentIndex(int(value))
-    
+                    elif key.lower() == "comments":
+                        comments = "".join(lines[lines.index(line)+1:])
+                        font = QtGui.QFont()
+                        font.setFamily('Serif')
+                        font.setPointSize(12)
+                        self.comments.setText(comments)
+                        self.comments.setFont(font)
+                        break
     def load_default_scan_params(self):
         file = self.setting_address+"\default_params.prm"
         if os.path.isfile(file):
@@ -1531,6 +1544,12 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.ypos.setValue(int(float(value)))
                     elif key == "zpos":
                         self.zpos.setValue(int(float(value)))
+                    elif key == "xactive":
+                        self.xactive.setChecked(bool(value))
+                    elif key == "yactive":
+                        self.yactive.setChecked(bool(value))
+                    elif key == "zactive":
+                        self.zactive.setChecked(bool(value))
                     elif key == "xsize":
                         self.xsize.setValue(float(value))
                     elif key == "ysize":
@@ -1572,6 +1591,14 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scan_type.setCurrentIndex(int(value))
                     elif key.lower() == "scanmode":
                         self.scan_mode.setCurrentIndex(int(value))
+                    elif key.lower() == "comments":
+                        comments = "".join(lines[lines.index(line)+1:])
+                        font = QtGui.QFont()
+                        font.setFamily('Serif')
+                        font.setPointSize(12)
+                        self.comments.setText(comments)
+                        self.comments.setFont(font)
+                        break
         else:
             print("Default parameter file not found.")
     
@@ -1590,6 +1617,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
             lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
             lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
+            lines.append("xactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("yactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("zactive = "+str(self.xactive.isChecked())+"\n")
             lines.append("xpos = "+str(self.xpos.value())+"\n")
             lines.append("ypos = "+str(self.ypos.value())+"\n")
             lines.append("zpos = "+str(self.zpos.value())+"\n")
@@ -1609,6 +1639,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("stageX = "+str(self.stageX.value())+"\n")
             lines.append("stageY = "+str(self.stageY.value())+"\n")
             lines.append("stageZ = "+str(self.stageZ.value())+"\n")
+            lines.append("Comments are below\n")
+            lines.append(self.comments.toPlainText())
             with open(file,'w') as f:
                 f.writelines(lines)
     
@@ -1624,6 +1656,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
             lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
             lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
+            lines.append("xactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("yactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("zactive = "+str(self.xactive.isChecked())+"\n")
             lines.append("xpos = "+str(self.xpos.value())+"\n")
             lines.append("ypos = "+str(self.ypos.value())+"\n")
             lines.append("zpos = "+str(self.zpos.value())+"\n")
@@ -1640,6 +1675,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
             lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
             lines.append("scanRate = "+str(self.srate_set.value())+"\n")
+            lines.append("Comments are below\n")
+            lines.append(self.comments.toPlainText())
             with open(file,'w') as f:
                 f.writelines(lines)
     

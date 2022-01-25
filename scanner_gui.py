@@ -931,18 +931,13 @@ class Ui_Scanner(object):
         self.commentLabel.setToolTip(_translate("Scanner", "<html><head/><body><p>Add comments to be stored into the saved file.</p></body></html>"))
         self.commentLabel.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Add </span></p><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Comments</span></p></body></html>"))
         self.comments.setToolTip(_translate("Scanner", "<html><head/><body><p>Anything entered here will be stored into the saved file.</p><p>Please add all necessary information related to the sample and scanning.</p></body></html>"))
-        self.comments.setHtml(_translate("Scanner", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Sample Details:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Filter:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Laser wavelength:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Attenuater:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Intensity:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Polarizer:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Analyzer:</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Memo:</span></p></body></html>"))
+        comment = "Sample Details:\nFilter:\nLaser wavelength:\nAttenuater:\nIntensity:\nPolarizer:\nAnalyzer:\nMemo:"
+        self.comments.setText(comment)
+        font = QtGui.QFont()
+        font.setFamily('Serif')
+        font.setPointSize(12)
+        self.comments.setFont(font)
+        self.sample_name.setFont(font)
         self.loadImage_button.setToolTip(_translate("Scanner", "<html><head/><body><p>Load a saved Image.</p><p>The starting coordinates are valid only if the sample has not been replaced.</p></body></html>"))
         self.loadImage_button.setText(_translate("Scanner", "Load Image from file"))
         self.select_scan_area.setToolTip(_translate("Scanner", "<html><head/><body><p>Select the region to be scanned</p></body></html>"))

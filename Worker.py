@@ -1389,6 +1389,7 @@ class ScanImage(QObject):
         self.refData = -ones_like(self.shgData)
         self.imgData = ones_like(self.shgData)
         self.Gal.start_single_point_counter()
+        midpoint = int(len(self.zarr)/2)
         for j,y in enumerate(self.yarr):
             self.Stage.goto_y(y)
             for i,x in enumerate(self.xarr):
@@ -1404,7 +1405,7 @@ class ScanImage(QObject):
                         break
                 if self.stopCall:
                     break
-                self.imageData.emit([self.shgData[0,:,:],self.refData[0,:,:],self.imgData[0,:,:]])
+                self.imageData.emit([self.shgData[midpoint,:,:],self.refData[midpoint,:,:],self.imgData[midpoint,:,:]])
                 self.Stage.goto_z(self.zarr[0]-BUF)
                 sleep((self.zsize+BUF)/self.zspeed)
                 while self.Stage.is_zmoving():
