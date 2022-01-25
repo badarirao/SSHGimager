@@ -1320,7 +1320,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.tperstep_set.setEnabled(True)
         else:
             self.srate_set.setEnabled(True)
-        self.select_scan_area.setEnabled(False)
         self.stop_button.setEnabled(False)
         self.stopcall = True
         self.comments.setEnabled(True)
