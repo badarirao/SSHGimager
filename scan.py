@@ -30,6 +30,8 @@ NOTE: address.txt should exist in the same folder as the python program
 First line in address.txt contains path of the galvano and stage settings file.
 Second line contains path of the last used directory to save images.
 
+# TODO: Verify scan order needs to be updated to account for 3 scan orders in y-axis 
+# Sometimes, stop-stage is active and is not disabled after startup or loading scan parameters.
 # TODO: Check definition of galvano xhome and yhome may have changed
 #TODO: Implement z-focus function
 #TODO: load and save scan parameters to file
@@ -114,7 +116,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = True)
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
