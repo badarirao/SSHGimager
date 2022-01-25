@@ -433,7 +433,7 @@ class ScanImage(QObject):
         self.Gal.reference.start()
         ref = self.Gal.reference.read() * 1000000
         self.Gal.reference.stop()
-        if  ref < 1000:
+        if  ref < 100:
             return False
         return True
         
