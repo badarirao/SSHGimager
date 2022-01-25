@@ -1046,6 +1046,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.worker.imageData3D.connect(self.plot3DImage)
         self.worker.checkRef.connect(self.ref_status)
         self.worker.initialData.connect(self.updateInitialData)
+        self.worker.zposition.connect(self.displayStatus)
         self.worker.finalEmit.connect(self.getfilename)
         self.thread.finished.connect(self.finishAction)
         self.thread.start()
@@ -1104,6 +1105,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.image = self.image.round(decimals = 6)
         self.data_line.setData(imageData[0],self.image)
         
+    def displayStatus(self,message):
+        self.statusBar().showMessage(message)
+        
     def plotImage(self,imageData):
         if self.autolevel == True:
             self.initiallevel += 1
@@ -1131,6 +1135,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             with open('address.txt','w') as f:
                 f.writelines(lines)
             os.chdir(folderpath)
+            self.data_address = folderpath
         
     def load_image_from_file(self):
         options = QtWidgets.QFileDialog.Options()
@@ -1331,12 +1336,34 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageX.setValue(int(self.Stage.x))
         self.stageY.setValue(int(self.Stage.y))
         self.stageZ.setValue(int(self.Stage.z))
+        self.statusBar().showMessage("")
+        info = None
+        for dset in dataSet:
+            if dset.modality == 'Scan Information':
+                info = dset.metadata['metadata']
+                if info['Scan Completed?'] == 'Yes':
+                    os.chdir(self.pth)
+                    with open("scanTimeData.txt",'a') as f:
+                        total_points = 1
+                        total_area = 1
+                        try:
+                            total_points *= int(info['aAxis']['Points'])
+                            total_area *= float(info['aAxis']['Size'])
+                            total_points *= int(info['bAxis']['Points'])
+                            total_area *= float(info['bAxis']['Size'])
+                            total_points *= int(info['cAxis']['Points'])
+                            total_area *= float(info['cAxis']['Size'])
+                        except KeyError:
+                            pass
+                        line = "Scan: {0}, Speed: {1} pps, Points: {2}, Area: {3}, Total Scan Time: {4}\n".format(info['Scan Type'],
+                                                                       info['Scan Speed'],
+                                                                       total_points,
+                                                                       total_area,
+                                                                       info['Total Scan Time'])
+                        f.write(line)
+                        os.chdir(self.data_address)
+                break
         if self.scanNum == Select.Z_Scan_Step_Stage:
-            info = None
-            for dset in dataSet:
-                if dset.modality == 'Scan Information':
-                    info = dset.metadata['metadata']
-                    break
             if info:
                 peak_position = 0
                 peak_intensity = 0
@@ -1368,8 +1395,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                             pass
                         self.stageZ.setValue(peak_position)
                 
-        #print("Final laser position: {0} {1}".format(self.Gal._x,self.Gal._y))
-        
     def x_state_change(self,state = True):
         if self.xactive.isChecked() and state:
             self.xpos.setEnabled(True)
