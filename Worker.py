@@ -28,6 +28,7 @@ class ScanImage(QObject):
     go_ahead = pyqtSignal(bool)
     checkRef = pyqtSignal(bool)
     finalEmit = pyqtSignal(str)
+    zposition = pyqtSignal(str)
     
     def __init__(self, scanParams, Gal, Stage, filename="sample"):
         super(ScanImage,self).__init__()
@@ -1020,6 +1021,7 @@ class ScanImage(QObject):
         self.Stage.set_zspeed(F=int(self.zspeed))
         for k,z in enumerate(self.zarr):
             self.Stage.goto_z(z)
+            self.zposition.emit("Current Z position: {}".format(z))
             while self.Stage.is_zmoving():
                 pass
             self.Gal.start_scanxy(self.xarr,self.yarr,retrace = self.scanKind)
@@ -1334,6 +1336,7 @@ class ScanImage(QObject):
         for k,z in enumerate(self.zarr):
             self.Stage.set_yspeed(F=int(self.yspeed))
             self.Stage.goto_z(z)
+            self.zposition.emit("Current Z position: {}".format(z))
             while self.Stage.is_zmoving():
                 pass
             self.scan3D_Stage(self.Stage.goto_xy,
@@ -1365,6 +1368,7 @@ class ScanImage(QObject):
         for k,z in enumerate(self.zarr):
             self.Stage.set_xspeed(F=int(self.xspeed))
             self.Stage.goto_z(z)
+            self.zposition.emit("Current Z position: {}".format(z))
             while self.Stage.is_zmoving():
                 pass
             self.altScan3D_Stage(self.Stage.goto_xy,
