@@ -3,6 +3,7 @@
 Created on Mon Feb  8 10:12:14 2021
 
 @author: Badari
+Hello
 
 -> Confirm the minimum laser spot size, so the minimum step possible should be this spot size
 -> Find out what is the maximum scan rate that can be used,
