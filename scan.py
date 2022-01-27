@@ -66,6 +66,7 @@ from utilities import checkInstrument, Select, BUF
 from Worker import ScanImage
 from SciFiReaders import NSIDReader
 import warnings
+from datetime import datetime
 
 warnings.simplefilter(action='ignore', category=(FutureWarning,VisibleDeprecationWarning))
 
@@ -1355,7 +1356,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                             total_area *= float(info['cAxis']['Size'])
                         except KeyError:
                             pass
-                        line = "Scan: {0}, Speed: {1} pps, Points: {2}, Area: {3}, Total Scan Time: {4}\n".format(info['Scan Type'],
+                        line = "Date: {0}, Scan: {1}, Speed: {2} pps, Points: {3}, Area: {4}, Total Scan Time: {5}\n".format(info["Date & Time"],
+                                                                       info['Scan Type'],
                                                                        info['Scan Speed'],
                                                                        total_points,
                                                                        total_area,
