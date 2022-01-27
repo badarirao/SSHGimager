@@ -160,9 +160,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         mesBox.setStandardButtons(QMessageBox.Ok)
         changeBtn.clicked.connect(self.change_save_directory)
         mesBox.exec()
-        #returnValue = mesBox.exec()
-        #if returnValue == QMessageBox.Change:
-        #    self.change_save_directory()
+        self.zLabel = QtWidgets.QLabel("")
     
     def update_screen(self):
         self.galvanodialog = galsetting()
@@ -1107,7 +1105,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.data_line.setData(imageData[0],self.image)
         
     def displayStatus(self,message):
-        self.statusBar().showMessage(message)
+        self.zLabel.setText(message)
+        self.statusBar().insertPermanentWidget(0, self.zLabel)
         
     def plotImage(self,imageData):
         if self.autolevel == True:
@@ -1337,7 +1336,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.stageX.setValue(int(self.Stage.x))
         self.stageY.setValue(int(self.Stage.y))
         self.stageZ.setValue(int(self.Stage.z))
-        self.statusBar().showMessage("")
+        self.statusBar().insertPermanentWidget(0,self.zLabel)
         info = None
         for dset in dataSet:
             if dset.modality == 'Scan Information':
