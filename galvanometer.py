@@ -6,13 +6,15 @@ Notes:
 
 """
 
-from numpy import ones, append, flip, shape, zeros, diff, linspace, array, divide
-from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection, TimeUnits
-from time import time,sleep
+from numpy import ones, append, flip, shape, zeros, diff, array, copy
+from nidaqmx.constants import Edge, READ_ALL_AVAILABLE, CountDirection
 from nidaqmx import stream_writers, Task
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration
 from nidaqmx.errors import DaqError
 from nidaqmx.error_codes import DAQmxErrors
+#from time import sleep
+#from PyQt5.QtCore import QTimer, QEventLoop
+#from PyQt5.QtCore import Qt
 
 class Galvano():
     def __init__(self,daq='Dev1/',aochan='ao0:1'):
@@ -35,11 +37,14 @@ class Galvano():
         self.sam_pc = 450
         self.xhome = 0
         self.yhome = 0
-        
 
     def create_taskxy(self):
         self.taskxy = Task()
         self.taskxy.ao_channels.add_ao_voltage_chan(self.ao_chan)
+    
+    def create_taskx(self):
+        self.taskx = Task()
+        self.taskx.ao_channels.add_ao_voltage_chan("Dev1/ao0")
         
     def set_xscan_param(self,nx=100,xmin=-10,xmax=10):
         self.nx = nx
@@ -95,50 +100,50 @@ class Galvano():
     
     @property 
     def x(self):
-        return self._x*self.xscale
+        return -(self._x-self.xhome)/self.xscale
     
     @x.setter 
     def x(self,value):
-        self._x = value/self.xscale
+        self._x = -value*self.xscale+self.xhome
         try:
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_TASK.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
              
     @property 
     def y(self):
-        return self._y*self.yscale
+        return -(self._y-self.yhome)/self.yscale
     
     @y.setter
     def y(self,value):
-        self._y = value/self.yscale
+        self._y = -value*self.yscale+self.yhome
         try:
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_TASK.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
         
     def gotoxy(self,x,y):
-        self._x = x/self.xscale
-        self._y = y/self.yscale
+        self._x = -x*self.xscale+self.xhome
+        self._y = -y*self.yscale+self.yhome
         try:
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_Task.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._x,self._y])
+            self.taskxy.write([self._y,self._x])
         
     def getxyarray(self,xarr,yarr,retrace=2):
         if self.fast_dir == 'x':
@@ -160,7 +165,7 @@ class Galvano():
                 a1_arr = append(a1_arr,flip(a1))
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
         elif retrace == 0: # scan trace and retrace a line, then go to next line
-            a1 = append(a1[:-1],flip(a1))
+            a1 = append(a1,flip(a1))
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
@@ -177,8 +182,13 @@ class Galvano():
                 else:
                     a1_arr = append(a1_arr,a1)
                 a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        a1_arr = append(a1_arr[0],a1_arr)
-        a2_arr = append(a2_arr[0],a2_arr)
+        if self.fast_dir == 'x':
+            a1_arr = append(a1_arr[0],a1_arr)
+            a2_arr = append(a2_arr[0],a2_arr)
+        else:
+            temp = copy(a2_arr)
+            a2_arr = append(a1_arr[0],a1_arr)
+            a1_arr = append(temp[0],temp)
         return append(a1_arr,a2_arr).reshape(2,len(a1_arr))
                 
 class Scan(Galvano):
@@ -193,6 +203,8 @@ class Scan(Galvano):
         self.img_dataSHG = zeros(10)
         self.img_dataRef = zeros(10)
         self.scanning = True
+        self.ID = 'NI6211'
+        self.scancomplete = False
     
     def create_ctr(self):
         try:
@@ -208,7 +220,7 @@ class Scan(Galvano):
             except Exception as e:
                 print(e)
                 raise DaqError
-        
+            
     def create_ref(self):
         try:
             self.reference.close()
@@ -226,12 +238,21 @@ class Scan(Galvano):
                 raise DaqError
             
     def start_scanxy(self,xarr,yarr,retrace=2):
-        self.xarr = xarr/self.xscale
-        self.yarr = yarr/self.yscale
-        self.xarr = self.xarr+self.xhome
-        self.yarr = self.yarr+self.yhome
+        self.startscan = True
+        self.retrace = retrace
+        self.xarr = xarr*self.xscale + self.xhome
+        self.yarr = yarr*self.yscale + self.yhome
+        self.i = 0
         t = 10 # default timeout = 10 seconds
         sample = self.getxyarray(self.xarr,self.yarr,retrace)
+        temp = -sample[0].copy()
+        sample[0] = -sample[1].copy()
+        sample[1] = temp.copy()
+        self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
+        #temp = self.sampleIndex[0].copy()
+        #self.sampleIndex[0] = self.sampleIndex[1].copy()
+        #self.sampleIndex[1] = temp.copy()
+        self.sampleIndex = self.sampleIndex[:,1:].astype(int)
         self.sam_pc = shape(sample)[1]
         total_time = self.sam_pc*len(sample)/self.srate
         if t < total_time + 1:
@@ -249,21 +270,24 @@ class Scan(Galvano):
         self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",\
                                                 sample_mode=AcquisitionType.FINITE,\
                                                     samps_per_chan=self.sam_pc)
-        
         self.counter.in_stream.read_all_avail_samp = True
         self.reference.timing.cfg_samp_clk_timing(self.srate,source="/Dev1/ao/SampleClock",\
                                                   sample_mode=AcquisitionType.FINITE,\
                                                       samps_per_chan=self.sam_pc)
         self.reference.in_stream.read_all_avail_samp = True
-        self.shgData = zeros(self.sam_pc)
-        self.refData = -ones(self.sam_pc,dtype=float)
-        #self.processedData = zeros(self.sam_pc)
+        if retrace != 0:
+            self.shgData = zeros(self.sam_pc)
+            self.refData = -ones(self.sam_pc)
+        else:
+            self.shgData = zeros(self.sam_pc)
+            self.refData = -ones(self.sam_pc)
+            self.shgData2 = zeros(self.sam_pc)
+            self.refData2 = -ones(self.sam_pc)
+        self.scancomplete = False
         self.counter.start()
         self.reference.start()
         self.taskxy.start()
-        self.i = 0
-        self.startscan = True
-
+    
     def update_scanxy(self):
         if self.startscan == False:
             return False
@@ -271,196 +295,127 @@ class Scan(Galvano):
             buffer_shg = array(self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE),dtype=float)
             number_of_SHG_samples = len(buffer_shg)
             buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
-            buffer_ref[buffer_ref < 1000] = 1  # to avoid divide by zero error
+            buffer_ref[buffer_ref < 100] = 1  # to avoid divide by zero error
+            self.shgData[self.i:self.i+number_of_SHG_samples] = buffer_shg
+            self.refData[self.i:self.i+number_of_SHG_samples] = buffer_ref
+            self.diff_data_shg = diff(self.shgData)
+            self.i += number_of_SHG_samples
+            try:
+                self.diff_data_shg[self.i-1] = 0
+            except IndexError:
+                pass
+            self.img_dataSHG = zeros((len(self.xarr),len(self.yarr)))
+            self.img_dataRef = -ones((len(self.xarr),len(self.yarr)))
+            if self.retrace == 0:
+                self.img_dataSHG2 = zeros((len(self.xarr),len(self.yarr)))
+                self.img_dataRef2 = -ones((len(self.xarr),len(self.yarr)))
+            for pos in range(self.sam_pc-1):
+                i = self.sampleIndex[0,pos]
+                j = self.sampleIndex[1,pos]
+                if self.retrace != 0:
+                    self.img_dataSHG[i,j] = self.diff_data_shg[pos]
+                    self.img_dataRef[i,j] = self.refData[pos+1]
+                else:
+                    if self.img_dataSHG[i,j] == 0:
+                        self.img_dataSHG[i,j] = self.diff_data_shg[pos]
+                        self.img_dataRef[i,j] = self.refData[pos+1]
+                    else:
+                        self.img_dataSHG2[i,j] = self.diff_data_shg[pos]
+                        self.img_dataRef2[i,j] = self.refData[pos+1]
+            self.img_Processed = self.img_dataSHG/self.img_dataRef
+            if self.retrace == 0:
+                self.img_Processed2 = self.img_dataSHG2/self.img_dataRef2
+            tj = self.taskxy.is_task_done()
+            if tj or self.i >= self.sam_pc:
+                self.scancomplete = True
+                return False
+            return True
         except DaqError:
             print("Daqerror encountered")
             self.startscan = False
             return False
-        l = len(buffer_shg)
-        self.shgData[self.i:self.i+l] = buffer_shg
-        self.refData[self.i:self.i+l] = buffer_ref
-        self.diff_data_shg = diff(self.shgData)
-        self.diff_data_ref = self.refData[1:]
-        self.processedData = self.diff_data_shg/self.diff_data_ref
-        self.i = self.i+l
-        try:
-            self.diff_data_shg[self.i-1] = 0
-            self.processedData[self.i-1] = 0
-        except IndexError:
-            pass
-        self.rawimg_dataSHG = self.diff_data_shg.reshape(len(self.xarr),len(self.yarr),order='F') # some problem with this
-        self.rawimg_dataRef = self.diff_data_ref.reshape(len(self.xarr),len(self.yarr),order='F')
-        self.processed_img = self.processedData.reshape(len(self.xarr),len(self.yarr),order='F')
-        self.img_dataSHG = []
-        self.img_dataRef = []
-        self.img_Processed = []
-        for p,q in enumerate(self.rawimg_dataSHG.T):
-            if p%2 == 0:
-                self.img_dataSHG.append(q)
-            else:
-                self.img_dataSHG.append(flip(q))
-        for p,q in enumerate(self.rawimg_dataRef.T):
-            if p%2 == 0:
-                self.img_dataRef.append(q)
-            else:
-                self.img_dataRef.append(flip(q))
-        for p,q in enumerate(self.processed_img.T):
-            if p%2 == 0:
-                self.img_Processed.append(q)
-            else:
-                self.img_Processed.append(flip(q))
-        self.img_dataSHG = array(self.img_dataSHG).T
-        self.img_dataRef = array(self.img_dataRef).T
-        self.img_Processed = array(self.img_Processed).T
-        #return not self.taskxy.is_task_done()
-        tj = self.taskxy.is_task_done()
-        if tj or self.i >= self.sam_pc:
-            return False
-        return True
     
     def stop_scanxy(self):
         self.counter.stop()
         self.reference.stop()
-        self.taskxy.stop()
+        self.create_ref()
+        self.taskxy.close()
+        self.create_taskxy()
         self.startscan = False
- 
-    def scanxy(self,xarr,yarr,retrace=2):
-        xarr = xarr/self.xscale
-        yarr = yarr/self.yscale
-        xarr = xarr+self.xhome
-        yarr = yarr+self.yhome
-        t = 10 # default timeout = 10 seconds
-        sample = self.getxyarray(xarr,yarr,retrace)
-        self.sam_pc = shape(sample)[1]
-        total_time = self.sam_pc*len(sample)/self.srate
-        if t < total_time + 1:
-            t = total_time + 2
-        # configure the galvanometer    
-        self.taskxy.timing.cfg_samp_clk_timing(rate = self.srate+1, \
+        # move laser to home position
+        self.gotoxy(0,0)
+        #print('Executed gal stop scanxy')
+        
+    def start_single_point_counter(self):
+        try:
+            self.taskxy.close()
+        except:
+            pass
+        self.create_taskx()
+        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate+1, \
                                                sample_mode = AcquisitionType.FINITE, \
-                                                   samps_per_chan = self.sam_pc)
-        self.taskxy.timing.cfg_samp_clk_timing(rate = self.srate, \
-                                               sample_mode = AcquisitionType.FINITE, \
-                                                   samps_per_chan = self.sam_pc)
-        writer = stream_writers.AnalogMultiChannelWriter(self.taskxy.out_stream,auto_start=False)
-        writer.write_many_sample(sample,timeout=t)
-        # configure the photodetector (counter)
+                                                   samps_per_chan = 2)
+        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate, \
+                                               sample_mode = AcquisitionType.FINITE,\
+                                                   samps_per_chan=2)
         self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",\
                                                 sample_mode=AcquisitionType.FINITE,\
-                                                    samps_per_chan=self.sam_pc)
-        
+                                                    samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
-        data = zeros(self.sam_pc)
+        writer = stream_writers.AnalogSingleChannelWriter(self.taskx.out_stream)
+        data = array((self._y,self._y),dtype=float)
+        writer.write_many_sample(data)
+        self.reference.start()
+        # first just try to see if the pulse generator works fine.
+    
+    def readCounts(self):
+        # TODO check if counter works properly
+        """
+        counts = 0
+        refV = 1
         self.counter.start()
-        self.taskxy.start()
-        i = 0
-        while True:
-            sleep(0.5)
-            buffer = self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE)
-            l = len(buffer)
-            data[i:i+l] = buffer
-            self.img_data = diff(data)
-            i = i+l
-            try:
-                self.img_data[i-1] = 0
-            except IndexError:
-                pass
-            #print(self.img_data)
-            if self.taskxy.is_task_done() or i >= self.sam_pc:
-                break
+        self.reference.start()
+        loop = QEventLoop()
+        QTimer.singleShot(1/self.srate, Qt.PreciseTimer, loop.quit)
+        #sleep(1/self.srate)
+        counts = self.counter.read()
+        refV = self.reference.read()*1000000
         self.counter.stop()
-        self.taskxy.stop()
-        return self.img_data
+        self.reference.stop()
+        return counts,refV
+        """
+        counts = 0
+        refV = 1
+        self.counter.start()
+        self.taskx.start()
+        while not self.counter.is_task_done():
+            pass
+        counts = diff(array(self.counter.read(number_of_samples_per_channel = READ_ALL_AVAILABLE),dtype=float))
+        refV = 1000000*self.reference.read()
+        if refV < 100:
+            refV = 1
+        self.counter.stop()
+        self.taskx.stop()
+        return counts[0],refV
+
+    def stop_single_point_counter(self):
+        self.counter.stop()
+        self.reference.stop()
+        self.create_ref()
+        self.taskx.close()
+        self.create_taskxy()
         
     def close_all_channels(self):
         self.taskxy.close()
         self.counter.close()
         self.reference.close()
-        
-    def get_tstep(self,t = 6.78):
-        if self.srate <= 0:
-            self.srate = 1
-        self.time_per_step = 1000/self.srate # milliseconds
-        
-        # recalibrate this step after including the whole program
-        if self.time_per_step > 10:
-            return self.time_per_step - t
-        elif self.time_per_step >= 6.4:
-            return 9.299-58.99/self.time_per_step
-        else:
-            return 0
-        
-    def scanx2(self,xarr):
-        xarr = xarr/self.xscale
-        xarr = xarr+self.xhome
-        tstep = self.get_tstep()
-        for i in xarr:
-            self.gotox(i)
-            sleep(tstep)
-        
-    def scany2(self,yarr):
-        yarr = yarr/self.yscale
-        yarr = yarr+self.yhome
-        tstep = self.get_tstep()
-        for i in yarr:
-            self.gotoy(i)
-            sleep(tstep)
-        
-    def scanxy2(self,xarr,yarr):
-        xarr = xarr/self.xscale
-        yarr = yarr/self.yscale
-        xarr = xarr+self.xhome
-        yarr = yarr+self.yhome
-        tstep = self.get_tstep(self.t)
-        if self.fast_dir == 'x':
-            stime = time()
-            for j in yarr:
-                for i in xarr:
-                    self.gotoxy(i,j)
-                    sleep(tstep/1000)
-        elif self.fast_dir == 'y':
-            stime = time()
-            for i in xarr:
-                for j in yarr:
-                    self.gotoxy(i,j)
-                    sleep(tstep/1000)
-        etime = time()
-        return len(xarr)*len(yarr)/(etime-stime)
-        #print('Total scan time per line = {0}'.format((etime-stime)/len(yarr)))
-        #print('Scan rate = {0}'.format(len(xarr)/((etime-stime)/len(yarr))))
-        
-    def optimize_srate(self):
-        xarr = linspace(-3,3,50)
-        yarr= linspace(-3,3,9)
-        sr = [10,20,50]
-        for s in sr:
-            self.srate = s
-            treq = 1000/s
-            while True:
-                sr1 = self.scanxy(xarr,yarr)
-                tact = 1000/sr1
-                if sr1 >= s+0.5 or sr1 <= s-0.5:
-                    self.t = self.t - (treq-tact)/2
-                    #print("Change tstep to {0}".format(self.t))
-                else:
-                    #print("optimum t = {0}".format(self.t))
-                    #print("Set scan rate = {0}, actual = {1}".format(s,sr1))
-                    break
-    
-    def optimize_srate2(self):
-        xarr = linspace(-3,3,50)
-        yarr= linspace(-3,3,9)
-        sr = []
-        tstep = linspace(0,3.11,21)
-        for s in tstep:
-            sr.append(self.scanxy(xarr,yarr,s))
-        return sr
-    
+                  
     def __del__(self):
         try:
             self.taskxy.close()
             self.counter.close()
             self.reference.close()
+            self.taskx.close()
         except:
             pass
         

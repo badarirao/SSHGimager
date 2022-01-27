@@ -4,28 +4,14 @@ Created on Mon Feb  8 10:12:14 2021
 
 @author: Badari
 
--> Add z-focus function
 -> Confirm the minimum laser spot size, so the minimum step possible should be this spot size
--> Find out what is the maximum scan rate that can be used, 
+-> Find out what is the maximum scan rate that can be used,
 and set that limit in the program
--> x and y gives the actual position in mm or um 
-   in the program you specify voltage to the galvanometer, and for that 
-   the corresponding x and y voltages are stored as _x and _y, so use these 
+-> x and y gives the actual position in mm or um
+   in the program you specify voltage to the galvanometer, and for that
+   the corresponding x and y voltages are stored as _x and _y, so use these
    in the program
--> the scanning functions which are active is hardware timed.
-   Software timed scanning functions are in the end comment section. It is 
-   not implimented as it does not yield exact timing
--> Take care of proper handling of the tasks during abrupt closing
--> Check partial buffering -> register every n samples, and display it in the screen
-https://stackoverflow.com/questions/56366033/continuous-acquistion-with-nidaqmx
-https://stackoverflow.com/questions/60947373/continuous-analog-read-from-national-instruments-daq-with-nidaqmx-python-package
-
--> Check if period counting is necessary, if the counter cannot handle total counts of whole scan
--> How to count for a specific time period exactly
-    
--> when initialize is clicked,
-    make sure the scan order is consistent, if not, autocorrect it
-
+   
 --> some useful code for 3D view convenience:
     https://jeanbilheux.pages.ornl.gov/post/pyqtgraph_states/
 
@@ -40,42 +26,49 @@ Plus minus 3V equals to plus minus 20 degree.
 DA convertor has 16bits so it has plus minus 32767 resolution.
 @author: Badari
 
+NOTE: address.txt should exist in the same folder as the python program
+First line in address.txt contains path of the galvano and stage settings file.
+Second line contains path of the last used directory to save images.
 
-#TODO ABRUPT stop button for stage (to stop accidental movement of stage)
-        When stage position is changed, until it is done moving, paint the box in red.
-        Once it has stopped moving, paint it back to grey color.
-        The abrupt stop button must be active only when any of the stage is moving.
-
+# TODO: Verify scan order needs to be updated to account for 3 scan orders in y-axis 
+# Sometimes, stop-stage is active and is not disabled after startup or loading scan parameters.
+# TODO: Check definition of galvano xhome and yhome may have changed
+#TODO: Implement z-focus function
+#TODO: load and save scan parameters to file
+#TODO: Increase resolution of z-stage so that we can focus it better.
+#TODO: Improve resolution of x andy y stage also?
+#TODO: stage moves to previous position during startup
+#TODO: implement 1D galvanoscan
 #TODO incorporate logger module into the software
 #TODO Clear button is not working
-#TODO galsetting and ds102setting widget has "reset to default button" and "set as default button" pending
 #TODO send prompts to status bar
 #TODO A Facility for Batch Program
 #TODO incorporate camera module into the software
-#TODO Make use of reference image to determine next scan parameters 
-# TODO make use of new python style - " match - case ""
-# Initial stage moving before scan is very slow
-# Abort scan when stage is moving to scan position
-# TODO: in scan type 37, if y has less than 5 points to scan, there is some problem
-# in drawing the final 3d image. Only half of 2d image of last scan is drawn.
-
+# TODO: If scan mode is changed, prompt to ensure adapters are changed accordingly.
+# TODO: add scan mode information in scan information
+# TODO: Disable laser scan in reflection mode
+# TODO: If counts are not detected, prompt to ask if adapters are set appropriately.
+# Continuous scan: only trace gives wrong counts at the edges. Need to account for it
+# TODO: GUI to view, process, and analyze all info from the image files.
 """
 
-from galvanometer import Scan
-from numpy import linspace, ones, ndarray, savetxt, column_stack, shape
+from numpy import ones, ndarray, shape,array, VisibleDeprecationWarning
 import os, sys
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtCore import QThread
+from PyQt5.QtWidgets import QMessageBox, QShortcut
+from PyQt5.QtCore import QThread, QTimer, QEventLoop
 import pyqtgraph as pg
 from scanner_gui import Ui_Scanner
 from galvanometer_settings import galsetting
 from ds102_settings import ds102setting
-from pymeasure.experiment import unique_filename
-from ds102 import DS102
-from PyQt5.QtCore import QEventLoop, QTimer
 from time import sleep
-from utilities import checkInstrument, MonitorStage, Select
+from utilities import checkInstrument, Select, BUF
+from Worker import ScanImage
+from SciFiReaders import NSIDReader
+import warnings
+from datetime import datetime
+
+warnings.simplefilter(action='ignore', category=(FutureWarning,VisibleDeprecationWarning))
 
 def item(name, value='', values=None, **kwargs):
     """Add an item to a parameter tree.
@@ -116,28 +109,104 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         super().__init__(*args,**kwargs)
         self.filename = "SHGimage"
         self.setupUi(self)
+        self.imageMenu = QtWidgets.QMenu()
+        self.selectImage_Button.setMenu(self.imageMenu)
+        self.scan_method = 0
+        self.pth = os.getcwd()
+        self.autochange = False
+        self.selectScanMethod()
+        self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com)
-        self.scan_method_change()
+        self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake = False)
         self.functionalize_buttons()
+        self.xpos.setValue(self.Stage.x)
+        self.ypos.setValue(self.Stage.y)
+        self.zpos.setValue(self.Stage.z)
         self.initialize()
         self.initialize_plot()
         self.show()
-        self.restrict_start_before_initialize()
         self.initGalvano()
         self.initStage()
+        self.stagemoved = False
         self.display_stagemove_msg()
-        self.stopcall = True
+        self.stopcall = False
+        self.plotNumber = 2
+        self.collection = []
+        self.ra1 = 10
+        self.rb1 = 10
+        self.scan_type_change()
+        self.last_saved_filename = self.filename+'.shg'
+        self.remCurrentImage = QShortcut(QtGui.QKeySequence('Ctrl+Del'), self)
+        self.remCurrentImage.activated.connect(self.removeImage)
+        self.delCollection = QShortcut(QtGui.QKeySequence('Shift+Ctrl+Del'), self)
+        self.delCollection.activated.connect(self.deleteCollection)
+        if self.Gal.ID == 'Fake' and self.Stage.ID == 'Fake':
+            self.statusBar().showMessage('Instrument not found, simulation mode running')
+        elif self.Gal.ID !='Fake' and self.Stage.ID != 'Fake':
+            self.statusBar().showMessage('Connection successful, Instrument ready to scan.')
+        else:
+            if self.Gal.ID == 'Fake':
+                self.statusBar().showMessage('Could not connect to galvanomirror, simulation mode running')
+                self.Stage.close()
+            elif self.Stage.ID == 'Fake':
+                self.statusBar().showMessage('Could not connect to stage, simulation mode running')
+                self.Gal.close_all_channels()
+            self.Gal, self.Stage = checkInstrument(ds102Port = self.ds102dialog.com, Fake= True)
+        mesBox = QMessageBox(self)
+        mesBox.setWindowTitle("Choose save directory")
+        mesBox.setIcon(QMessageBox.Question)
+        mesBox.setText("Current save directory is: {}\nClick Ok to continue, or click change to change the save directory.".format(self.data_address))
+        changeBtn = mesBox.addButton('Change',mesBox.ActionRole)
+        mesBox.setStandardButtons(QMessageBox.Ok)
+        changeBtn.clicked.connect(self.change_save_directory)
+        mesBox.exec()
+        self.zLabel = QtWidgets.QLabel("")
     
     def update_screen(self):
-        self.pth = os.path.dirname(__file__)
         self.galvanodialog = galsetting()
-        os.chdir(self.pth)
         self.galvanodialog.setWindowModality(QtCore.Qt.ApplicationModal)
         self.ds102dialog = ds102setting()
         self.ds102dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.initialPath = os.getcwd()
+        self.setting_address = "."
+        if os.path.isfile('address.txt'):
+            with open('address.txt','r') as f:
+                lines = f.readlines()
+                if len(lines) > 0:
+                    self.setting_address = lines[0].rstrip()
+                    try:
+                        self.data_address = lines[1]
+                    except:
+                        self.data_address = ''
+            if self.data_address and os.path.isdir(self.data_address):
+                    os.chdir(self.data_address)
+            else:
+                # set default path to store measured data as desktop
+                self.defaultPath = os.path.join(
+                    os.path.expandvars("%userprofile%"), "Desktop")
+                # set default path as current directory if desktop is not found in C drive
+                if not os.path.exists(self.defaultPath):
+                    self.defaultPath = self.initialPath 
+                self.defaultPath += '\\SHG_Data'
+                self.data_address = self.defaultPath
+                if len(lines)>1:
+                    lines[-1] = self.defaultPath
+                else:
+                    lines.append(self.defaultPath)
+                with open('address.txt','w') as f:
+                    f.writelines(lines)
+                if os.path.exists(self.defaultPath):
+                    os.chdir(self.defaultPath)
+                else:
+                    os.makedirs(self.defaultPath)
+                    os.chdir(self.defaultPath)
+        else:
+            print('address.txt not found.')
+            print(' Create address.txt in the program location')
+            print('1st line should contain path of setting file')
+            print('2nd line should contain path of save directory')
         style1 = {'color':'y','size':'18pt'}
-        style2 = {'color':'r','size':'18pt'}
+        style2 = {'color':'r','size':'16pt'}
         self.liveplot.ui.menuBtn.hide()
         self.ref_plot.ui.menuBtn.hide()
         self.liveplot.view.getViewBox().setMouseMode(pg.ViewBox.RectMode)
@@ -145,8 +214,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         font=QtGui.QFont()
         font.setPixelSize(14)
         labelStyle = {'color': '#FFF', 'font-size': '12pt'}
-        self.liveplot.view.setTitle("Active Mapping",**style1)
-        self.ref_plot.view.setTitle("Reference Map",**style2)
+        self.liveplot.view.setTitle("Active Scan",**style1)
+        self.ref_plot.view.setTitle("Scan Collection",**style2)
+        self.liveplot1d.setTitle("Active Scan",**style1)
+        self.ref_plot1d.setTitle("Scan Collection",**style2)
         self.liveplot.view.getAxis("bottom").setTickFont(font)
         self.liveplot.view.getAxis("left").setTickFont(font)
         self.liveplot.view.getAxis("top").setTickFont(font)
@@ -154,17 +225,18 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.liveplot.view.getAxis("bottom").setLabel('', units='', **labelStyle)
         self.liveplot.view.getAxis("left").setLabel('', units='', **labelStyle)
         self.liveplot.setPredefinedGradient('magma')
+        self.liveplot1d.getAxis("bottom").setLabel('',units='',**labelStyle)
+        self.liveplot1d.getAxis("left").setLabel('',units='',**labelStyle)
+        self.ref_plot.setPredefinedGradient('magma')
         self.ref_plot.view.getAxis("bottom").setTickFont(font)
         self.ref_plot.view.getAxis("left").setTickFont(font)
         self.ref_plot.view.getAxis("top").setTickFont(font)
         self.ref_plot.view.getAxis("right").setTickFont(font)
         self.ref_plot.view.getAxis("bottom").setLabel('', units='', **labelStyle)
         self.ref_plot.view.getAxis("left").setLabel('', units='', **labelStyle)
+        self.ref_plot1d.getAxis("bottom").setLabel('',units='',**labelStyle)
+        self.ref_plot1d.getAxis("left").setLabel('',units='',**labelStyle)
         self.scanNum = 0
-        #self.liveplot1d.setLabel('left','Intensity (counts)',**style1)
-        #self.liveplot1d.setLabel('bottom','X (μm)',**style1)
-        #self.ref_plot1d.setLabel('left','Intensity (counts)',**style1)
-        #self.ref_plot1d.setLabel('bottom','X (μm)',**style1)
         labels={'bottom': ("X",'μm'), 'left':("Y",'μm'),'top':"",'right':""}
         self.liveplot.view.setLabels(**labels)
         self.ref_plot.view.setLabels(**labels)
@@ -174,21 +246,28 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.xactive.stateChanged.connect(self.x_state_change)
         self.yactive.stateChanged.connect(self.y_state_change)
         self.zactive.stateChanged.connect(self.z_state_change)
-        self.scan_method.currentIndexChanged.connect(self.scan_method_change)
         self.scan_type.currentIndexChanged.connect(self.scan_type_change)
-        self.scan_method.setEnabled(False)
+        self.plot_type.currentIndexChanged.connect(self.selectPlotType)
+        self.scan_kind.currentIndexChanged.connect(self.selectScanMethod)
+        self.scan_mode.currentIndexChanged.connect(self.selectScanMode)
         self.start_button.clicked.connect(self.run_program)
         self.stop_button.clicked.connect(self.stop_program)
-        self.verify_button.clicked.connect(self.initialize)
+        self.loadImage_button.clicked.connect(self.load_image_from_file)
+        self.stageStop_Button.clicked.connect(self.stopStage)
+        self.saveDir_button.clicked.connect(self.change_save_directory)
+        self.imageMenu.triggered.connect(self.get_image_from_collection)
         self.select_scan_area.setCheckable(True)
         self.select_scan_area.clicked.connect(self.hideroiplot)
-        self.actionSave.triggered.connect(self.save_imagefile)
-        self.actionSave_as.triggered.connect(self.promptSave_imagefiles)
         self.actionGalvanometer.triggered.connect(self.setgalvano)
+        self.actionExit.triggered.connect(self.close)
+        self.actionLoad_Parameters_from_file.triggered.connect(self.load_scan_params)
+        self.actionSave_current_parameters_to_file.triggered.connect(self.save_scan_params)
+        self.actionReset_to_default_parameters.triggered.connect(self.load_default_scan_params)
+        self.actionSet_current_parameters_as_default.triggered.connect(self.setDefault_scan_params)
         self.actionSteppermotor.triggered.connect(self.setstage)
-        self.xstep.editingFinished.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
-        self.ystep.editingFinished.connect(lambda: self.steps_to_points(self.ysize,self.ystep,self.ypoints))
-        self.zstep.editingFinished.connect(lambda: self.steps_to_points(self.zsize,self.zstep,self.zpoints))
+        self.xstep.valueChanged.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
+        self.ystep.valueChanged.connect(lambda: self.steps_to_points(self.ysize,self.ystep,self.ypoints))
+        self.zstep.valueChanged.connect(lambda: self.steps_to_points(self.zsize,self.zstep,self.zpoints))
         self.xsize.valueChanged.connect(lambda: self.steps_to_points(self.xsize,self.xstep,self.xpoints))
         self.ysize.valueChanged.connect(lambda: self.steps_to_points(self.ysize,self.ystep,self.ypoints))
         self.zsize.valueChanged.connect(lambda: self.steps_to_points(self.zsize,self.zstep,self.zpoints))
@@ -197,24 +276,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ypos.valueChanged.connect(self.update_sizelimits)
         self.zpos.valueChanged.connect(self.update_sizelimits)
         self.tperstep_set.valueChanged.connect(lambda: self.tstep_to_rate(self.srate_set,self.tperstep_set))
-        self.xpos.valueChanged.connect(self.restrict_start_before_initialize)
-        self.ypos.valueChanged.connect(self.restrict_start_before_initialize)
-        self.zpos.valueChanged.connect(self.restrict_start_before_initialize)
-        self.xsize.valueChanged.connect(self.restrict_start_before_initialize)
-        self.ysize.valueChanged.connect(self.restrict_start_before_initialize)
-        self.zsize.valueChanged.connect(self.restrict_start_before_initialize)
-        self.xpoints.valueChanged.connect(self.restrict_start_before_initialize)
-        self.ypoints.valueChanged.connect(self.restrict_start_before_initialize)
-        self.zpoints.valueChanged.connect(self.restrict_start_before_initialize)
-        self.xscanorder.currentIndexChanged.connect(self.restrict_start_before_initialize)
-        self.yscanorder.currentIndexChanged.connect(self.restrict_start_before_initialize)
-        self.zscanorder.currentIndexChanged.connect(self.restrict_start_before_initialize)
-        self.tperstep_set.valueChanged.connect(self.restrict_start_before_initialize)
-        self.xactive.stateChanged.connect(self.restrict_start_before_initialize)
-        self.yactive.stateChanged.connect(self.restrict_start_before_initialize)
-        self.zactive.stateChanged.connect(self.restrict_start_before_initialize)
-        self.scan_type.currentIndexChanged.connect(self.restrict_start_before_initialize)
-        self.scan_method.currentIndexChanged.connect(self.restrict_start_before_initialize)
         self.setdefaults()
         if self.scan_type.currentIndex() == 0:
             self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
@@ -223,32 +284,30 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ref_plot.ui.roiBtn.clicked.connect(self.chkselbutton)
         self.liveplot.view.scene().sigMouseMoved.connect(self.printliveplot_MousePos)
         self.ref_plot.view.scene().sigMouseMoved.connect(self.printrefplot_MousePos)
-        self.scan_mode.setEnabled(False)  # currently disable selecting scan mode
+        self.liveplot.ui.roiBtn.hide()
         self.sample_name.setText(self.filename)
         self.sample_name.textChanged.connect(self.updatefile)
-        self.actionSave.setShortcut('Ctrl+S')
-        self.actionSave.setStatusTip('Save the current image to file')
         self.toolButton_xhome.clicked.connect(self.gohome_xstage)
         self.toolButton_yhome.clicked.connect(self.gohome_ystage)
         self.toolButton_zhome.clicked.connect(self.gohome_zstage)
-        self.spinBox_xmove.setMaximum(self.ds102dialog.xmax)
-        self.spinBox_xmove.setMinimum(self.ds102dialog.xmin)
-        self.spinBox_xmove.setValue(self.Stage.x)
-        self.spinBox_xmove.valueChanged.connect(self.updateXstage)
-        self.spinBox_xmove.setKeyboardTracking(False)
-        self.spinBox_ymove.setMaximum(self.ds102dialog.ymax)
-        self.spinBox_ymove.setMinimum(self.ds102dialog.ymin)
-        self.spinBox_ymove.setValue(self.Stage.y)
-        self.spinBox_ymove.setKeyboardTracking(False)
-        self.spinBox_ymove.valueChanged.connect(self.updateYstage)
-        self.spinBox_zmove.setMaximum(self.ds102dialog.zmax)
-        self.spinBox_zmove.setMinimum(self.ds102dialog.zmin)
-        self.spinBox_zmove.setValue(self.Stage.z)
-        self.spinBox_zmove.setKeyboardTracking(False)
-        self.spinBox_zmove.valueChanged.connect(self.updateZstage)
-        self.xscanorder.setEnabled(False) # currently scan order is not changable
-        self.yscanorder.setEnabled(False)
-        self.zscanorder.setEnabled(False)
+        self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
+        self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
+        self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
+        self.stageX.setMaximum(self.ds102dialog.xmax)
+        self.stageX.setMinimum(self.ds102dialog.xmin)
+        self.stageX.setValue(self.Stage.x)
+        self.stageX.valueChanged.connect(self.updateXstage)
+        self.stageX.setKeyboardTracking(False)
+        self.stageY.setMaximum(self.ds102dialog.ymax)
+        self.stageY.setMinimum(self.ds102dialog.ymin)
+        self.stageY.setValue(self.Stage.y)
+        self.stageY.setKeyboardTracking(False)
+        self.stageY.valueChanged.connect(self.updateYstage)
+        self.stageZ.setMaximum(self.ds102dialog.zmax)
+        self.stageZ.setMinimum(self.ds102dialog.zmin)
+        self.stageZ.setValue(self.Stage.z)
+        self.stageZ.setKeyboardTracking(False)
+        self.stageZ.valueChanged.connect(self.updateZstage)
         self.zpos.setMinimum(self.ds102dialog.zmin)
         self.zpos.setMaximum(self.ds102dialog.zmax)
         self.zsize.setMaximum(self.ds102dialog.zmax-self.zpos.value())
@@ -258,9 +317,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ypos.setMinimum(self.ds102dialog.ymin)
         self.zpos.setMaximum(self.ds102dialog.zmax)
         self.zpos.setMinimum(self.ds102dialog.zmin)
-        self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-        self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-        self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
         self.scan_type.setCurrentIndex(1)
         self.xsize.setValue(500)
         self.ysize.setValue(500)
@@ -269,26 +325,58 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.ypoints.setValue(101)
         self.zpoints.setValue(101)
         self.tperstep_set.setValue(0.01)
+        self.xpoints.setReadOnly(True)
+        self.ypoints.setReadOnly(True)
+        self.zpoints.setReadOnly(True)
     
+    def hide_stageStop_Button(self):
+        self.stageStop_Button.setEnabled(False)
+        
+    def stopStage(self):
+        self.Stage.stop_allstage()
+        self.stageStop_Button.setEnabled(False)
+        self.stageX.setValue(self.Stage.x)
+        self.stageY.setValue(self.Stage.y)
+        self.stageZ.setValue(self.Stage.z)
+    
+    def checkStage(self):
+        if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+            QTimer.singleShot(100, self.checkStage)
+        else:
+            self.stageStop_Button.setEnabled(False)
+        
     def gohome_xstage(self):
-        self.spinBox_xmove.setValue(self.ds102dialog.xhome)
-    
+        self.stageStop_Button.setEnabled(True)
+        self.stageX.setValue(self.ds102dialog.xhome)
+        self.checkStage()
+        
     def gohome_ystage(self):
-        self.spinBox_ymove.setValue(self.ds102dialog.yhome)
+        self.stageStop_Button.setEnabled(True)
+        self.stageY.setValue(self.ds102dialog.yhome)
+        self.checkStage()
     
     def gohome_zstage(self):
-        self.spinBox_zmove.setValue(self.ds102dialog.zhome)
+        self.stageStop_Button.setEnabled(True)
+        self.stageZ.setValue(self.ds102dialog.zhome)
+        self.checkStage()
         
     def updateXstage(self):
-        self.Stage.x = self.spinBox_xmove.value()
+        self.stageStop_Button.setEnabled(True)
+        self.Stage.x = self.stageX.value()
+        self.checkStage()
     
     def updateYstage(self):
-        self.Stage.y = self.spinBox_ymove.value()
+        self.stageStop_Button.setEnabled(True)
+        self.Stage.y = self.stageY.value()
+        self.checkStage()
         
     def updateZstage(self):
-        self.Stage.z = self.spinBox_zmove.value()
+        self.stageStop_Button.setEnabled(True)
+        self.Stage.z = self.stageZ.value()
+        self.checkStage()
         
     def updatefile(self):
+        self.stageStop_Button.setEnabled(True)
         self.filename = self.sample_name.text().split('_')[0]
                 
     def chkselbutton(self):
@@ -297,84 +385,41 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ref_plot.roi.rotateAllowed = True
             self.ref_plot.roi.addRotateHandle([0, 0], [0.5, 0.5])
             
-    def promptSave_imagefiles(self):
-        options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog
-        self.filename, _ = QtWidgets.QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Parameter Files (*.txt)", options=options)
-        if self.filename:
-            curpth = os.getcwd()
-            os.chdir(self.pth)
-            with open('address.txt','r') as f:
-                lines = f.readlines()
-            lines[-1] = os.path.dirname(self.filename)
-            with open('address.txt','w') as f:
-                f.writelines(lines)
-            os.chdir(curpth)
-            self.save_imagefile()
-    
-    def save_imagefile(self):
-        if self.filename.find('.') != -1:
-            index = self.filename.rindex('.')  # rindex returns the last location of '.'
-            self.filename = self.filename[:index]
-        self.filename_shg = unique_filename(directory='.',prefix=self.filename+'_shg',datetimeformat="",ext='txt')
-        self.filename_ref = unique_filename(directory='.',prefix=self.filename+'_ref',datetimeformat="",ext='txt')
-        self.filename_processed = unique_filename(directory='.',prefix=self.filename+'_processed',datetimeformat="",ext='txt')
-        self.filenamedisp = self.filename_shg.split('\\')[-1].split('_')[0]
-        self.filenamedisp = self.filenamedisp.split('/')[-1].split('.')[0]
-        if self.scanNum in {4,8,12}:
-            whole_data = column_stack((self.Stage.Oneddata,self.Stage.count_data))
-            savetxt(self.filename_shg,whole_data,fmt='%g',delimiter='\t')
-        elif self.scanNum in {40,37}:  # 3D scan data
-            with open(self.filename_shg,'ab') as f:
-                for i in range(self.imgSHG.shape[0]):
-                    a=self.imgSHG[i,:,:]
-                    savetxt(f,a.T,fmt='%g',delimiter='\t')
-                    f.write(b'\n\n')
-            with open(self.filename_ref,'ab') as f:
-                for i in range(self.imgRef.shape[0]):
-                    a=self.imgRef[i,:,:]
-                    savetxt(f,a.T,fmt='%g',delimiter='\t')
-                    f.write(b'\n\n')
-            with open(self.filename_processed,'ab') as f:
-                for i in range(self.imgProcessed.shape[0]):
-                    a=self.imgProcessed[i,:,:]
-                    savetxt(f,a.T,fmt='%g',delimiter='\t')
-                    f.write(b'\n\n')
-        else:
-            savetxt(self.filename_shg, self.imgSHG.T, fmt='%g',delimiter='\t')
-            savetxt(self.filename_ref, self.imgRef.T, fmt='%g',delimiter='\t')
-            savetxt(self.filename_processed, self.imgProcessed.T, fmt='%g',delimiter='\t')
-        self.sample_name.setText(self.filenamedisp)
-        
     def printliveplot_MousePos(self,pos):
         position = self.liveplot.view.vb.mapSceneToView(pos)
         mx = position.x()
         my = position.y()
-        if mx > self.a0 and my > self.b0 and mx < self.a1 and my < self.b1:
-            xi = int((position.x()-self.a0)/self.ascale)
-            yi = int((position.y()-self.b0)/self.bscale)
-            if len(shape(self.imgProcessed)) == 2:
-                s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.imgProcessed[xi,yi])
-            elif len(shape(self.imgProcessed)) == 3:
-                intensity = self.imgProcessed[self.liveplot.currentIndex,xi,yi]
+        if mx > 0 and my > 0 and mx < self.a1 and my < self.b1:
+            xi = int(mx/self.ascale)
+            yi = int(my/self.bscale)
+            if len(shape(self.image)) == 2:
+                s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.image[xi,yi])
+            elif len(shape(self.image)) == 3:
+                intensity = self.image[self.liveplot.currentIndex,xi,yi]
                 s = 'x: ' + str("{:.3f}").format(mx) + '   y: ' + str("{:.3f}").format(my) + \
-                    '   z: ' + str("{:.3f}").format(self.Stage.zarr[self.liveplot.currentIndex]) + \
+                    '   z: ' + str("{:.3f}").format(self.zarr[self.liveplot.currentIndex]) + \
                     '   Intensity = ' + str(intensity)
-            self.lineEdit.setText(s)
+            self.lineEdit_messagePrompt.setText(s)
         else:
-            self.lineEdit.setText("")
+            self.lineEdit_messagePrompt.setText("")
     
     def printrefplot_MousePos(self,pos):
         position = self.ref_plot.view.vb.mapSceneToView(pos)
         mx = position.x()
         my = position.y()
-        if mx > self.rx0 and my > self.ry0 and mx < self.rx1 and my < self.ry1:
-            xi = int((position.x()-self.rx0)/self.rxscale)
-            yi = int((position.y()-self.ry0)/self.ryscale)
-            s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.rimg[xi,yi])
-            self.lineEdit.setText(s)
+        if mx > 0 and my > 0 and mx < self.ra1 and my < self.rb1:
+            xi = int(mx/self.rascale)
+            yi = int(my/self.rbscale)
+            if len(shape(self.rimage)) == 2:
+                s = '   x = ' + str("{:.3f}").format(mx) + '   y = ' + str("{:.3f}").format(my) + '   Intensity = ' + str(self.rimage[xi,yi])
+            elif len(shape(self.rimage)) == 3:
+                intensity = self.rimage[self.ref_plot.currentIndex,xi,yi]
+                s = 'x: ' + str("{:.3f}").format(mx) + '   y: ' + str("{:.3f}").format(my) + \
+                    '   z: ' + str("{:.3f}").format(self.rcAxis[self.ref_plot.currentIndex]) + \
+                    '   Intensity = ' + str(intensity)
+            self.lineEdit_messagePrompt.setText(s)
         else:
-            self.lineEdit.setText("")
+            self.lineEdit_messagePrompt.setText("")
         
     def getroidata(self):
         # Extract image data from ROI
@@ -396,38 +441,51 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             image.view(ndarray), img=self.ref_plot.imageItem, axes=axes,
             returnMappedCoords=True)
         if self.nd == 2:
-            if not self.xactive.isChecked():
-                self.ypos.setValue(coords[0][0][0])
-                self.zpos.setValue(coords[1][0][0])
+            if 'X' not in [self.raAx,self.rbAx]:
+                self.ypos.setValue(coords[0][0][0]+self.rypos)
+                self.zpos.setValue(coords[1][0][0]+self.rzpos)
                 self.ysize.setValue(coords[0][-1][-1]-coords[0][0][0])
                 self.zsize.setValue(coords[1][-1][-1]-coords[1][0][0])
-                self.xpos.setValue(coords[0][0][0])
-                self.zpos.setValue(coords[1][0][0])
+            elif 'Y' not in [self.raAx,self.rbAx]:
+                self.xpos.setValue(coords[0][0][0]+self.rxpos)
+                self.zpos.setValue(coords[1][0][0]+self.rzpos)
                 self.xsize.setValue(coords[0][-1][-1]-coords[0][0][0])
                 self.zsize.setValue(coords[1][-1][-1]-coords[1][0][0])
-            elif not self.zactive.isChecked():
-                self.xpos.setValue(coords[0][0][0])
-                self.ypos.setValue(coords[1][0][0])
+            elif 'Z' not in [self.raAx,self.rbAx]:
+                self.xpos.setValue(coords[0][0][0]+self.rxpos)
+                self.ypos.setValue(coords[1][0][0]+self.rypos)
                 self.xsize.setValue(coords[0][-1][-1]-coords[0][0][0])
                 self.ysize.setValue(coords[1][-1][-1]-coords[1][0][0])
         elif self.nd == 3:
-            self.xpos.setValue(coords[0][0][0])
-            self.ypos.setValue(coords[1][0][0])
+            self.xpos.setValue(coords[0][0][0]+self.rxpos)
+            self.ypos.setValue(coords[1][0][0]+self.rypos)
             self.xsize.setValue(coords[0][-1][-1]-coords[0][0][0])
             self.ysize.setValue(coords[1][-1][-1]-coords[1][0][0])
                 
     def hideroiplot(self):
+        if not self.ref_plot.isVisible():
+            self.select_scan_area.setChecked(False)
+            return
         if self.select_scan_area.isChecked():
+            if len(self.rimage.shape) == 3:
+                #print(self.ref_plot.currentIndex)
+                self.curr_ref_index = self.ref_plot.currentIndex
+                imageSlice = self.rimage[self.curr_ref_index,:,:]
+                self.ref_plot.setImage(imageSlice,pos=[0,0],scale=[self.rascale,self.rbscale],autoLevels=False)
             if self.ref_plot.ui.roiBtn.isChecked():
                 self.ref_plot.ui.roiBtn.setChecked(False)
             self.ref_plot.roi.show()
             self.ref_plot.ui.roiPlot.setMouseEnabled(True, True)
             self.ref_plot.roiChanged()
             self.ref_plot.roi.rotateAllowed = False
+            self.ref_plot.roi.setAngle(0)
             self.ref_plot.roi.removeHandle(1)  # remove the rotate handle
             self.ref_plot.ui.roiPlot.hide()
             self.getroidata()
         else:
+            if len(self.rimage.shape) == 3:
+                self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale],xvals = self.rcAxis,autoLevels=False)
+                self.ref_plot.setCurrentIndex(self.curr_ref_index)
             self.ref_plot.roi.hide()
             self.ref_plot.roi.rotateAllowed = True
             self.ref_plot.roi.addRotateHandle([0, 0], [0.5, 0.5])
@@ -444,14 +502,19 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         if points.value() == 1:
             points.setValue(2)
         steps.setValue(size.value()/(points.value()-1))
+        #TODO: try to get step * points exactly equal to size
     
     def steps_to_points(self,size,steps,points):
-        if steps.value() == 0:
+        steps.setMaximum(size.value())
+        s = steps.value()
+        if s == 0:
             if self.scan_type.currentIndex() == 0:
                 steps.setValue(0.0001)
+                s = 0.0001
             else:
                 steps.setValue(1)
-        points.setValue(int(size.value()/steps.value()+1))
+                s = 1
+        points.setValue(int(size.value()/s+1))
     
     def setdefaults(self):
         pass
@@ -476,14 +539,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         elif self.nd == 3:
             return self.zpoints.value(), self.xpoints.value(), self.ypoints.value()
         
-    def restrict_start_before_initialize(self):
-        self.start_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
-        self.stop_button.setEnabled(False)
-        self.verify_button.setEnabled(True)
-        #self.scan_method.setEnabled(True)
-        self.scan_type.setEnabled(True)
-    
     def verify_scan_order(self):
         if self.nd == 1:
             if self.xactive.isChecked():
@@ -509,13 +564,21 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 elif self.xscanorder.currentIndex() == 1:
                     self.yscanorder.setCurrentIndex(0)
         elif self.nd == 3:
-            self.zscanorder.setCurrentIndex(2)
-            if self.xscanorder.currentIndex() == 0:
-                self.yscanorder.setCurrentIndex(1)
-            elif self.xscanorder.currentIndex() == 1:
-                self.yscanorder.setCurrentIndex(0)
+            if self.zscanorder.currentIndex() == 0:
+                self.xscanorder.setCurrentIndex(1)
+                self.yscanorder.setCurrentIndex(2)
+            else:
+                self.zscanorder.setCurrentIndex(2)
+                if self.xscanorder.currentIndex() == 0:
+                    self.yscanorder.setCurrentIndex(1)
+                elif self.xscanorder.currentIndex() == 1:
+                    self.yscanorder.setCurrentIndex(0)
             
     def initialize(self):
+        self.selectScanMethod()
+        self.xposition = int(self.xpos.value())
+        self.yposition = int(self.ypos.value())
+        self.zposition = int(self.zpos.value())
         self.nd = 0
         if self.xactive.isChecked():
             self.nd = self.nd + 1
@@ -523,73 +586,99 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.nd = self.nd + 1
         if self.zactive.isChecked():
             self.nd = self.nd + 1
+        if self.nd == 0:
+            info = QMessageBox(self)
+            info.setWindowTitle("Error!")
+            info.setIcon(QMessageBox.Critical)
+            info.setText("No axis selected. Please select atleast 1 axis to scan..")
+            info.setStandardButtons(QMessageBox.Ok)
+            info.show()
+            self.stopcall = True
+            return
+        # there is some problem when ypoints <= 4
+        if self.nd == 3 and self.ypoints.value() <= 4:
+            self.ypoints.setValue(5)
+        self.points_to_steps(self.xsize,self.xstep,self.xpoints)
+        self.points_to_steps(self.ysize,self.ystep,self.ypoints)
+        self.points_to_steps(self.zsize,self.zstep,self.zpoints)
         self.apoints = 1
         self.bpoints = 1
         self.cpoints = 1
         self.verify_scan_order()
-        
         if self.nd == 1:
             self.apoints = self.getpoints()
-            self.imgProcessed = -ones((self.apoints))
+            self.image = -ones((self.apoints))
         elif self.nd == 2:
             self.apoints,self.bpoints = self.getpoints()
-            self.imgProcessed = -ones((self.apoints,self.bpoints))
+            self.image = -ones((self.apoints,self.bpoints))
         elif self.nd == 3:
             self.cpoints,self.apoints, self.bpoints = self.getpoints()
-            self.imgProcessed = -ones((self.apoints,self.bpoints))
+            self.image = -ones((self.apoints,self.bpoints))
         if self.nd == 1:
             if self.xactive.isChecked():
+                self.stageX.setValue(int(self.xpos.value()))
+                self.yposition = self.stageY.value()
+                self.zposition = self.stageZ.value()
                 self.x0,self.x1 = 0,self.xsize.value()
-                self.xscale = (self.x1-self.x0)/self.imgProcessed.shape[0]
+                self.xscale = (self.x1-self.x0)/self.image.shape[0]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 if self.scan_type.currentIndex() == 0:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         self.scanNum = Select.X_Scan_Continuous_Galvano
                     else:
                         self.scanNum = Select.X_Scan_Step_Galvano
                 else:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         self.scanNum = Select.X_Scan_Continuous_Stage
                     else:
                         self.scanNum = Select.X_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.yactive.isChecked():
+                self.stageY.setValue(int(self.ypos.value()))
+                self.xposition = self.stageX.value()
+                self.zposition = self.stageZ.value()
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.yscale = (self.y1-self.y0)/self.imgProcessed.shape[0]
+                self.yscale = (self.y1-self.y0)/self.image.shape[0]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 if self.scan_type.currentIndex() == 0:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         self.scanNum = Select.Y_Scan_Continuous_Galvano
                     else:
                         self.scanNum = Select.Y_Scan_Step_Galvano
                 else:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         self.scanNum = Select.Y_Scan_Continuous_Stage
                     else:
                         self.scanNum = Select.Y_Scan_Step_Stage
                 labels={'bottom': ("Y",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
             elif self.zactive.isChecked():
+                self.xposition = self.stageX.value()
+                self.yposition = self.stageY.value()
+                self.stageZ.setValue(int(self.zpos.value()))
                 self.z0,self.z1 = 0,self.zsize.value()
                 self.a0, self.a1, self.asize = self.z0, self.z1, self.zsize.value()
-                self.zscale = (self.z1-self.z0)/self.imgProcessed.shape[0]
+                self.zscale = (self.z1-self.z0)/self.image.shape[0]
                 labels={'bottom': ("Z",'μm'), 'left':("Intensity",'counts'),'top':"",'right':""}
                 if self.scan_type.currentIndex() == 0:
                     self.scan_type.setCurrentIndex(1)
-                if self.scan_method.currentIndex() == 0:
+                if self.scan_method == 0:
                     self.scanNum = Select.Z_Scan_Continuous_Stage
                 else:
                     self.scanNum = Select.Z_Scan_Step_Stage
         elif self.nd == 2:
-            if not self.xactive.isChecked():
+            if not self.xactive.isChecked(): # yz scan
+                self.stageY.setValue(int(self.ypos.value()))
+                self.stageZ.setValue(int(self.zpos.value()))
+                self.xposition = self.stageX.value()
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.z0,self.z1 = 0,+self.zsize.value()
-                self.yscale, self.zscale = (self.y1-self.y0)/self.imgProcessed.shape[0],(self.z1-self.z0)/self.imgProcessed.shape[1]
+                self.z0,self.z1 = 0,self.zsize.value()
+                self.yscale, self.zscale = (self.y1-self.y0)/self.image.shape[0],(self.z1-self.z0)/self.image.shape[1]
                 self.a0, self.a1, self.asize = self.y0, self.y1, self.ysize.value()
                 self.b0, self.b1, self.bsize = self.z0, self.z1, self.zsize.value()
                 self.ascale, self.bscale = self.yscale, self.zscale
                 self.scan_type.setCurrentIndex(1) # you can improve it later
                 if self.scan_type.currentIndex() == 0:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.yscanorder.currentIndex() == 0:
                             self.scanNum = Select.YZ_Scan_Continuous_Galvano
                         else:
@@ -600,7 +689,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.ZY_Scan_Step_Galvano
                 else:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.yscanorder.currentIndex() == 0:
                             self.scanNum = Select.YZ_Scan_Continuous_Stage
                         else:
@@ -611,16 +700,19 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.ZY_Scan_Step_Stage
                 labels={'bottom': ("Y",'μm'), 'left':("Z",'μm'),'top':"",'right':""}
-            elif not self.yactive.isChecked():
+            elif not self.yactive.isChecked(): # xz scan
+                self.stageX.setValue(int(self.xpos.value()))
+                self.stageZ.setValue(int(self.zpos.value()))
+                self.yposition = self.stageY.value()
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.z0,self.z1 = 0,self.zsize.value()
-                self.xscale, self.zscale = (self.x1-self.x0)/self.imgProcessed.shape[0],(self.z1-self.z0)/self.imgProcessed.shape[1]
+                self.xscale, self.zscale = (self.x1-self.x0)/self.image.shape[0],(self.z1-self.z0)/self.image.shape[1]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 self.b0, self.b1, self.bsize = self.z0, self.z1, self.zsize.value()
                 self.ascale, self.bscale = self.xscale, self.zscale
                 self.scan_type.setCurrentIndex(1)
                 if self.scan_type.currentIndex() == 0:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.xscanorder.currentIndex() == 0:
                             self.scanNum = Select.XZ_Scan_Continuous_Galvano
                         else:
@@ -631,7 +723,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.ZX_Scan_Step_Galvano
                 else:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.xscanorder.currentIndex() == 0:
                             self.scanNum = Select.XZ_Scan_Continuous_Stage
                         else:
@@ -642,15 +734,18 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.ZX_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Z",'μm'),'top':"",'right':""}
-            elif not self.zactive.isChecked():
+            elif not self.zactive.isChecked(): # xy scan
+                self.stageX.setValue(int(self.xpos.value()))
+                self.stageY.setValue(int(self.ypos.value()))
+                self.zposition = self.stageZ.value()
                 self.x0,self.x1 = 0,self.xsize.value()
                 self.y0,self.y1 = 0,self.ysize.value()
-                self.xscale, self.yscale = (self.x1-self.x0)/self.imgProcessed.shape[0],(self.y1-self.y0)/self.imgProcessed.shape[1]
+                self.xscale, self.yscale = (self.x1-self.x0)/self.image.shape[0],(self.y1-self.y0)/self.image.shape[1]
                 self.a0, self.a1, self.asize = self.x0, self.x1, self.xsize.value()
                 self.b0, self.b1, self.bsize = self.y0, self.y1, self.ysize.value()
                 self.ascale, self.bscale = self.xscale, self.yscale
                 if self.scan_type.currentIndex() == 0:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.xscanorder.currentIndex() == 0:
                             self.scanNum = Select.XY_Scan_Continuous_Galvano
                         else:
@@ -661,7 +756,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.YX_Scan_Step_Galvano
                 else:
-                    if self.scan_method.currentIndex() == 0:
+                    if self.scan_method == 0:
                         if self.xscanorder.currentIndex() == 0:
                             self.scanNum = Select.XY_Scan_Continuous_Stage
                         else:
@@ -672,7 +767,10 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         else:
                             self.scanNum = Select.YX_Scan_Step_Stage
                 labels={'bottom': ("X",'μm'), 'left':("Y",'μm'),'top':"",'right':""}
-        elif self.nd == 3:
+        elif self.nd == 3: #xyz scan
+            self.stageX.setValue(int(self.xpos.value()))
+            self.stageY.setValue(int(self.ypos.value()))
+            self.stageZ.setValue(int(self.zpos.value()))
             self.x0, self.x1 = 0,self.xsize.value()
             self.y0, self.y1 = 0,self.ysize.value()
             self.z0, self.z1 = 0,self.zsize.value()
@@ -682,8 +780,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.b0, self.b1, self.bsize  = self.y0, self.y1, self.ysize.value()
             self.c0, self.c1, self.csize  = self.z0, self.z1, self.zsize.value()
             self.ascale, self.bscale, self.cscale  = self.xscale, self.yscale, self.zscale
-            if self.scan_type.currentIndex() == 0:
-                if self.scan_method.currentIndex() == 0:
+            if self.scan_type.currentIndex() == 0: # Laser Scan
+                if self.scan_method == 0:
                     if self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Continuous_Galvano
                     else:
@@ -693,14 +791,16 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                         self.scanNum = Select.XYZ_Scan_Step_Galvano
                     else:
                         self.scanNum = Select.YXZ_Scan_Step_Galvano
-            else:
-                if self.scan_method.currentIndex() == 0:
+            else: # Stage Scan
+                if self.scan_method == 0: # continuous scan
                     if self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Continuous_Stage
                     else:
                         self.scanNum = Select.YXZ_Scan_Continuous_Stage
-                else:
-                    if self.xscanorder.currentIndex() == 0:
+                else: # step scan
+                    if self.zscanorder.currentIndex() == 0:
+                        self.scanNum = Select.ZXY_Scan_Step_Stage
+                    elif self.xscanorder.currentIndex() == 0:
                         self.scanNum = Select.XYZ_Scan_Step_Stage
                     else:
                         self.scanNum = Select.YXZ_Scan_Step_Stage
@@ -712,7 +812,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.liveplot1d.hide()
                 #self.ref_plot1d.hide()
             self.liveplot.view.setLabels(**labels)
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+            self.liveplot.setImage(self.image,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         elif self.nd == 1: # 1d plot
             # yet to be implemented
             if self.liveplot.isVisible():
@@ -722,37 +822,19 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 #self.ref_plot1d.show()
             self.liveplot1d.setLabels(**labels)
             
-        elif self.nd == 0:
-            inst = QtWidgets.QDialog(self)
-            inst.resize(400, 60)
-            hl = QtWidgets.QHBoxLayout(inst)
-            inst.setWindowTitle("No axis selected")
-            l = QtWidgets.QLabel(inst)
-            l.setText("Please select atleast 1 axis to scan")
-            hl.addWidget(l)
-            inst.exec_()
-            self.restrict_start_before_initialize()
-            #self.ref_plot1d.getPlotItem().setLabels(**labels)
-        print('Scan Type: {0}'.format(self.scanNum))
-        self.start_button.setEnabled(True)
-        self.verify_button.setEnabled(False)
         
     def setgalvano(self):
         if self.galvanodialog.exec_():
             self.initGalvano()
     
     def initGalvano(self):
-        self.Gal.x = self.galvanodialog.xpos
-        self.Gal.y = self.galvanodialog.ypos
         self.Gal.xscale = self.galvanodialog.xscale
         self.Gal.yscale = self.galvanodialog.yscale
         self.Gal.xhome = self.galvanodialog.xpos
         self.Gal.yhome = self.galvanodialog.ypos
+        self.Gal.x = 0
+        self.Gal.y = 0
         if self.scan_type.currentIndex() == 0:
-            self.xpos.setMaximum(self.galvanodialog.xmax)
-            self.ypos.setMaximum(self.galvanodialog.ymax)
-            self.xpos.setMinimum(self.galvanodialog.xmin)
-            self.ypos.setMinimum(self.galvanodialog.ymin)
             self.update_sizelimits()
 
     def update_sizelimits(self):
@@ -761,8 +843,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.xsize.setMaximum(self.ds102dialog.xmax-self.xpos.value())
             self.ysize.setMaximum(self.ds102dialog.ymax-self.ypos.value())
         else:
-            self.xsize.setMaximum(self.galvanodialog.xmax-self.xpos.value())
-            self.ysize.setMaximum(self.galvanodialog.ymax-self.ypos.value())
+            self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
+            self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             
     def setstage(self):
         if self.ds102dialog.exec_() == QtWidgets.QDialog.Accepted:
@@ -771,35 +853,38 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
     def initStage(self):
         self.zpos.setMaximum(self.ds102dialog.zmax)
         self.zpos.setMinimum(self.ds102dialog.zmin)
-        self.spinBox_xmove.setMaximum(self.ds102dialog.xmax)
-        self.spinBox_xmove.setMinimum(self.ds102dialog.xmin)
-        self.spinBox_ymove.setMaximum(self.ds102dialog.ymax)
-        self.spinBox_ymove.setMinimum(self.ds102dialog.ymin)
-        self.spinBox_zmove.setMaximum(self.ds102dialog.zmax)
-        self.spinBox_zmove.setMinimum(self.ds102dialog.zmin)
+        self.stageX.setMaximum(self.ds102dialog.xmax)
+        self.stageX.setMinimum(self.ds102dialog.xmin)
+        self.stageY.setMaximum(self.ds102dialog.ymax)
+        self.stageY.setMinimum(self.ds102dialog.ymin)
+        self.stageZ.setMaximum(self.ds102dialog.zmax)
+        self.stageZ.setMinimum(self.ds102dialog.zmin)
         self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
         sleep(0.1)
         self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
         sleep(0.1)
+        self.Stage.xscale = self.ds102dialog.xscale
+        self.Stage.yscale = self.ds102dialog.yscale
+        self.Stage.zscale = self.ds102dialog.zscale
+        self.Stage.xhome = self.ds102dialog.xhome
+        self.Stage.yhome = self.ds102dialog.yhome
+        self.Stage.zhome = self.ds102dialog.zhome
         self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-        if self.scan_type.currentIndex() == 1:
-            self.xpos.setMaximum(self.ds102dialog.xmax)
-            self.xpos.setMinimum(self.ds102dialog.xmin)
-            self.ypos.setMaximum(self.ds102dialog.ymax)
-            self.ypos.setMinimum(self.ds102dialog.ymin)
-            self.update_sizelimits()
+        self.xpos.setMaximum(self.ds102dialog.xmax)
+        self.xpos.setMinimum(self.ds102dialog.xmin)
+        self.ypos.setMaximum(self.ds102dialog.ymax)
+        self.ypos.setMinimum(self.ds102dialog.ymin)
+        self.update_sizelimits()
             
     def initialize_plot(self):
         self.rx0,self.rx1 = (0,self.ds102dialog.xmax)
         self.ry0,self.ry1 = (0,self.ds102dialog.ymax)
-        self.rimg = -ones((400,400))
-        for i in range(10):
-            self.rimg[20+i,30:100] = 10
-        self.rxscale, self.ryscale = (self.rx1-self.rx0)/self.rimg.shape[0],(self.ry1-self.ry0)/self.rimg.shape[1]
+        self.rimg = -ones((500,500))
+        self.rxscale, self.ryscale = 1,1
         self.ref_plot.setImage(self.rimg,pos=[self.rx0,self.ry0],scale=[self.rxscale,self.ryscale])
 
         if self.nd > 1:
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+            self.liveplot.setImage(self.image,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
             #self.ref_plot.setImage(self.img,pos=[self.a0,self.y0],scale=[self.xscale,self.yscale])
         elif self.nd == 1:
             pass # implement to plot a 2d graph instead of image
@@ -807,7 +892,31 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             pass # prompt dialogue to say that no axis is selected for scanning
                  
       
+    def stagefinished(self):
+        self.stagemoved = True
+    
     def display_stagemove_msg(self):
+        loop = QEventLoop()
+        info = QMessageBox(self)
+        info.setWindowTitle("Stage in Motion..")
+        info.setIcon(QMessageBox.Information)
+        info.setText("Stage is moving, Please wait...")
+        info.setStandardButtons(QMessageBox.NoButton)
+        if self.Stage.ID == 'Fake':
+            info.show()
+            QTimer.singleShot(1000, loop.quit)
+            loop.exec()
+        else:
+            if self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                info.show()
+                while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
+                    QTimer.singleShot(100, loop.quit)
+                    loop.exec()
+        info.hide()
+    
+    """
+    def display_stagemove_msg(self):
+        #loop = QEventLoop()
         info = QMessageBox(self)
         info.setWindowTitle("Stage in Motion..")
         info.setIcon(QMessageBox.Information)
@@ -816,684 +925,479 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         stageStatus = MonitorStage(self.Stage)
         stageStatus.start()
         stageStatus.finished.connect(info.hide)
+        stageStatus.finished.connect(self.stagefinished)
+        stageStatus.finished.connect(stageStatus.deleteLater)
         info.exec()
+        while not self.stagefinished:
+            sleep(0.1)
+            #QTimer.singleShot(1000, loop.quit)
+            #loop.exec_()
+    """
     
-    def check_ref_ON(self):
-        loop = QEventLoop()
-        self.Gal.reference.start()
-        QTimer.singleShot(100, loop.quit)
-        ref = self.Gal.reference.read() * 1000000
-        self.Gal.reference.stop()
-        if  ref < 1000:
+    def get_savefilename(self):
+        if self.filename.find('.') != -1:
+            index = self.filename.rindex('.')  # rindex returns the last location of '.'
+            self.filename = self.filename[:index]
+        self.sample_name.setText(self.filename)
+        
+    def selectScanMethod(self):
+        i = self.scan_kind.currentIndex()
+        if self.zscanorder.currentIndex() == 0:
+            self.scan_kind.setCurrentIndex(0)
+        if not self.autochange:
+            self.original_scanKind = i
+        if i == 0:
+            self.scanKind = 1
+        elif i == 1:
+            self.scanKind = -1
+        elif i == 2:
+            self.scanKind = 0
+        elif i == 3:
+            self.scanKind = 2
+        
+    def selectScanMode(self):
+        # Select reflection or transmission mode.
+        # Currently only disable laser scan for reflection mode.
+        # Later you can add any other modifications as required.
+        i = self.scan_mode.currentIndex()
+        if i == 1:
+            self.scan_type.setCurrentIndex(1)
+            self.scan_type.model().item(0).setEnabled(False)
+        else:
+            self.scan_type.model().item(0).setEnabled(True)
+            
+    def run_program(self):
+        self.stopcall = False
+        self.initialize()
+        if self.stopcall:
+            return
+        self.stop_button.setEnabled(True)
+        self.start_button.setEnabled(False)
+        self.scan_type.setEnabled(False)
+        self.stageStop_Button.setEnabled(False)
+        self.sample_name.setEnabled(False)
+        self.comments.setEnabled(False)
+        self.xactive.setEnabled(False)
+        self.yactive.setEnabled(False)
+        self.zactive.setEnabled(False)
+        self.x_state_change(False)
+        self.y_state_change(False)
+        self.z_state_change(False)
+        self.stageX.setEnabled(False)
+        self.stageY.setEnabled(False)
+        self.stageZ.setEnabled(False)
+        self.toolButton_xhome.setEnabled(False)
+        self.toolButton_yhome.setEnabled(False)
+        self.toolButton_zhome.setEnabled(False)
+        self.tperstep_set.setEnabled(False)
+        self.srate_set.setEnabled(False)
+        self.scan_kind.setEnabled(False)
+        self.scan_mode.setEnabled(False)
+        self.select_scan_area.setEnabled(False)
+        self.saveDir_button.setEnabled(False)
+        self.display_stagemove_msg()
+        self.Stage.x = self.xposition-BUF
+        self.Stage.y = self.yposition-BUF
+        self.Stage.z = self.zposition-BUF
+        self.display_stagemove_msg()
+        self.Stage.x = self.xposition
+        self.Stage.y = self.yposition
+        self.Stage.z = self.zposition
+        self.display_stagemove_msg()
+        print('Started {0} Scan...'.format(Select.scanName(self.scanNum)))
+        self.get_savefilename()
+        self.draw_original_PlotType_menu()
+        self.initiallevel = 0
+        self.autolevel = True
+        #print("Initial: {0} {1}".format(self.Gal._x,self.Gal._y))
+        self.scanParams = [self.nd,
+                           self.scanNum, 
+                           self.xposition, 
+                           self.yposition, 
+                           self.zposition, 
+                           self.xsize.value(),
+                           self.ysize.value(),
+                           self.zsize.value(),
+                           self.xpoints.value(),
+                           self.ypoints.value(),
+                           self.zpoints.value(),
+                           self.ds102dialog.xscanspeed,
+                           self.ds102dialog.yscanspeed,
+                           self.ds102dialog.zscanspeed,
+                           self.srate_set.value(),
+                           self.ds102dialog.xspeed,
+                           self.ds102dialog.yspeed,
+                           self.ds102dialog.zspeed,
+                           self.scanKind,
+                           self.scan_mode.currentIndex(),
+                           self.comments.toPlainText()
+                           ]
+        # start Thread
+        self.thread = QThread()
+        self.worker = ScanImage(self.scanParams,self.Gal, self.Stage, self.filename)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.startScan)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.lineData.connect(self.plotLine)
+        self.worker.imageData.connect(self.plotImage)
+        self.worker.imageData3D.connect(self.plot3DImage)
+        self.worker.checkRef.connect(self.ref_status)
+        self.worker.initialData.connect(self.updateInitialData)
+        self.worker.zposition.connect(self.displayStatus)
+        self.worker.finalEmit.connect(self.getfilename)
+        self.thread.finished.connect(self.finishAction)
+        self.thread.start()
+        
+    def getfilename(self,fname):
+        self.last_saved_filename = fname
+        
+    def ref_status(self, reference_ON):
+        if not reference_ON:
             prompt = "Reference signal is not turned on. Continue without reference?"
             reply = QtGui.QMessageBox.question(self, 'Message', 
                      prompt, QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
             if reply == QtGui.QMessageBox.Yes:
-                return 1
+                self.worker.go_ahead.emit(True)
             else:
-                return 0
-        return 1
-    
-    def run_program(self):
-        self.pause_button.setEnabled(True)
-        self.stop_button.setEnabled(True)
-        self.start_button.setEnabled(False)
-        self.scan_type.setEnabled(False)
-        self.stopcall = False
+                self.worker.go_ahead.emit(False)
+        else:
+            self.worker.go_ahead.emit(True)
+            
+    def updateInitialData(self, mes):
+        self.current_Scan_detail = mes[0]
+        self.axis1 = mes[1]
         if self.nd == 1:
-            if self.scanNum == Select.X_Scan_Step_Stage: # 1D x scan
-                sleep(0.1)
-                self.spinBox_xmove.setValue(int(self.xpos.value()))
-                self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))                
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
-                self.stage_stepscanx(self.arr_a)
-            elif self.scanNum == Select.Y_Scan_Step_Stage: # 1D Y Scan
-                sleep(0.1)
-                self.spinBox_ymove.setValue(int(self.ypos.value()))
-                self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))                
-                self.display_stagemove_msg()
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.apoints,dtype=int)
-                self.stage_stepscany(self.arr_b)
-            elif self.scanNum == Select.Z_Scan_Step_Stage:  # 1D Z Scan
-                sleep(0.1)
-                self.spinBox_zmove.setValue(int(self.zpos.value()))
-                self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))                
-                self.display_stagemove_msg()
-                self.arr_c = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.apoints,dtype=int)
-                self.stage_stepscanz(self.arr_c)
+            self.liveplot1d.clear()
+            self.axis2 = 'counts (a.u.)'
+            pen2 = pg.mkPen(color = (0,0,255), width = 2)
+            self.data_line = self.liveplot1d.plot([mes[2]],[0],pen=pen2)
         elif self.nd == 2:
-            if not self.check_ref_ON():
-                self.stopcall = True
-                self.start_button.setEnabled(True)
-                self.scan_type.setEnabled(True)
-                self.stop_button.setEnabled(False)
-                self.pause_button.setEnabled(False)
-                return
-            if self.scanNum == Select.ZY_Scan_Step_Stage:
-                self.spinBox_ymove.setValue(int(self.ypos.value()))
-                self.spinBox_zmove.setValue(int(self.zpos.value()))
-                self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))
-                sleep(0.1)
-                self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.apoints,dtype=int)
-                self.arr_b = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.bpoints,dtype=int)
-                self.stage_stepscanyz(self.arr_a,self.arr_b)
-            elif self.scanNum == Select.XZ_Scan_Step_Stage:
-                self.spinBox_xmove.setValue(int(self.xpos.value()))
-                self.spinBox_zmove.setValue(int(self.zpos.value()))
-                self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))
-                sleep(0.1)
-                self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
-                self.arr_b = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.bpoints,dtype=int)
-                self.stage_stepscanxz(self.arr_a,self.arr_b)
-            elif self.scanNum == Select.XY_Scan_Continuous_Galvano:
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.asize,self.apoints)
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.bsize,self.bpoints)
-                #self.spinBox_xmove.setValue(int(self.xpos.value()+self.asize/2))
-                #self.spinBox_ymove.setValue(int(self.ypos.value()+self.bsize/2))
-                #self.display_stagemove_msg()
-                #self.Gal.start_scanxy(self.arr_a-self.asize/2,self.arr_b-self.bsize/2)
-                self.Gal.x = self.arr_a[0]+self.Gal.xhome
-                self.Gal.y = self.arr_b[0]+self.Gal.yhome
-                self.Gal.srate = self.srate_set.value()
-                self.Gal.start_scanxy(self.arr_a,self.arr_b)
-                self.plot_realtime_data29()
-            elif self.scanNum == Select.XY_Scan_Step_Galvano:
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.asize,self.apoints)
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.bsize,self.bpoints)
-                #self.spinBox_xmove.setValue(int(self.xpos.value()+self.asize/2))
-                #self.spinBox_ymove.setValue(int(self.ypos.value()+self.bsize/2))
-                #self.display_stagemove_msg()
-                #self.gal_stepscanxy(self.arr_a-self.asize/2,self.arr_b-self.bsize/2)
-                self.gal_stepscanxy(self.arr_a,self.arr_b)
-                #self.img = self.Gal.img_data
-                #self.liveplot.setImage(self.img,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            elif self.scanNum == Select.XY_Scan_Step_Stage:
-                self.spinBox_xmove.setValue(int(self.xpos.value()))
-                self.spinBox_ymove.setValue(int(self.ypos.value()))
-                self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))
-                sleep(0.1)
-                self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.bpoints,dtype=int)
-                self.stage_stepscanxy(self.arr_a,self.arr_b)
+            self.ascale = mes[3]
+            self.bscale = mes[4]
+            #self.liveplot.setImage(mes[2],pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
         elif self.nd == 3:
-            if not self.check_ref_ON():
-                self.stopcall = True
-                self.start_button.setEnabled(True)
-                self.scan_type.setEnabled(True)
-                self.stop_button.setEnabled(False)
-                self.pause_button.setEnabled(False)
-                return
-            if self.scanNum == Select.XYZ_Scan_Step_Stage:
-                self.spinBox_xmove.setValue(int(self.xpos.value()))
-                self.spinBox_ymove.setValue(int(self.ypos.value()))
-                self.spinBox_zmove.setValue(int(self.zpos.value()))
-                self.Stage.set_xspeed(F=int(self.ds102dialog.xscanspeed))
-                sleep(0.1)
-                self.Stage.set_yspeed(F=int(self.ds102dialog.yscanspeed))
-                sleep(0.1)
-                self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=int)
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.bpoints,dtype=int)
-                self.arr_c = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.cpoints,dtype=int)
-                self.stage_stepscanxyz(self.arr_a,self.arr_b,self.arr_c)
-            elif self.scanNum == Select.XYZ_Scan_Continuous_Galvano:
-                self.spinBox_zmove.setValue(int(self.zpos.value()))
-                sleep(0.1)
-                self.Stage.set_zspeed(F=int(self.ds102dialog.zscanspeed))
-                self.display_stagemove_msg()
-                self.arr_a = linspace(self.xpos.value(),self.xpos.value()+self.xsize.value(),self.apoints,dtype=float)
-                self.arr_b = linspace(self.ypos.value(),self.ypos.value()+self.ysize.value(),self.bpoints,dtype=float)
-                self.arr_c = linspace(self.zpos.value(),self.zpos.value()+self.zsize.value(),self.cpoints,dtype=int)
-                self.galscan37()
-        
-    def plot_realtime_data29(self):
-        self.timer = QtCore.QTimer()
-        self.timecount = QtCore.QElapsedTimer()
-        self.timer.setInterval(200)
-        self.timer.timeout.connect(self.update_data29)
-        self.timer.start()
-        self.timecount.start()
-        #self.liveplot.setImage(self.img,pos=[self.x0,self.y0],scale=[self.xscale,self.yscale])
-        
-    def update_data29(self):
-        # update the plot data, and anything you want to change on screen
-        if self.Gal.update_scanxy():
-            self.imgProcessed = self.Gal.img_Processed
-        else:
-            self.imgProcessed = self.Gal.img_Processed
-            self.imgSHG = self.Gal.img_dataSHG
-            self.imgRef = self.Gal.img_dataRef
-            self.stop_program()
-            self.Gal.create_ctr()
-            self.Gal.create_ref()
-            self.Gal.taskxy.close()
-            self.Gal.create_taskxy()
-            print("moved mirror to home position")
-            self.Gal.x = self.galvanodialog.xpos
-            self.Gal.y = self.galvanodialog.ypos            
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+            self.ascale = mes[4]
+            self.bscale = mes[5]
+            self.zarr = mes[6]
     
-    def galscan37(self):
-        self.Stage.zarr = self.arr_c
-        self.img3dSHG = -ones((len(self.arr_c),len(self.arr_a),len(self.arr_b)))
-        self.img3dRef = -ones((len(self.arr_c),len(self.arr_a),len(self.arr_b)))
-        self.img3dProcessed = -ones((len(self.arr_c),len(self.arr_a),len(self.arr_b)))
-        self.i = 0
-        self.frameFinishedFlag = 0
-        self.timer = QtCore.QTimer()
-        self.timer.singleShot(0, self.update_data37)
+    def selectPlotType(self):
+        self.plotNumber = self.plot_type.currentIndex()
+        if self.stopcall:
+            if self.nd == 1:
+                self.image = self.imageData[self.plotNumber+1]
+                self.image = self.image.round(decimals = 6)
+                self.liveplot1d.enableAutoRange(enable = True)
+                self.data_line.setData(self.imageData[0],self.image)
+            elif self.nd == 2:
+                self.image = self.imageData[self.plotNumber]
+                self.image = self.image.round(decimals = 6)
+                self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale])
+            elif self.nd == 3:
+                self.image = self.imageData[self.plotNumber]
+                self.image = self.image.round(decimals = 6)
+                self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],xvals = self.zarr)
         
-    def update_data37Frame(self):
-        # update the plot data, and anything you want to change on screen
-        if self.Gal.update_scanxy():
-            self.imgSHG = self.Gal.img_dataSHG
-            self.imgRef = self.Gal.img_dataRef
-            self.imgProcessed = self.Gal.img_Processed
-        else:
-            self.timer1.stop()
-            self.Gal.stop_scanxy()
-            self.Gal.create_ctr()
-            self.Gal.create_ref()
-            self.imgSHG = self.Gal.img_dataSHG
-            self.imgRef = self.Gal.img_dataRef
-            self.imgProcessed = self.Gal.img_Processed
-            self.img3dProcessed[self.i,:,:] = self.Gal.img_Processed
-            self.img3dSHG[self.i,:,:] = self.Gal.img_dataSHG
-            self.img3dRef[self.i,:,:] = self.Gal.img_dataRef
-            self.i = self.i+1
-            if self.i < len(self.arr_c) and self.stopcall == False:
-                self.timer.singleShot(0,self.update_data37)
+    def plotLine(self,imageData):
+        self.image = array(imageData[self.plotNumber+1])
+        self.image = self.image.round(decimals = 6)
+        self.data_line.setData(imageData[0],self.image)
+        
+    def displayStatus(self,message):
+        self.zLabel.setText(message)
+        self.statusBar().insertPermanentWidget(0, self.zLabel)
+        
+    def plotImage(self,imageData):
+        if self.autolevel == True:
+            self.initiallevel += 1
+            if self.initiallevel > 10:
+                self.autolevel = False
+        self.image = imageData[self.plotNumber]
+        self.image = self.image.round(decimals = 6)
+        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],autoLevels=self.autolevel)
+    
+    def plot3DImage(self,imageData):
+        self.image = imageData[self.plotNumber]
+        self.image = self.image.round(decimals = 6)
+        self.liveplot.setImage(self.image,pos=[0,0],scale=[self.ascale,self.bscale],xvals = self.zarr,autoHistogramRange=False)
+    
+    def change_save_directory(self):
+        folderpath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Folder')
+        if folderpath:
+            os.chdir(self.pth)
+            with open('address.txt','r') as f:
+                lines = f.readlines()
+            if len(lines)>1:
+                lines[-1] = folderpath
             else:
-                self.stop_program()
-                print("moved mirror to home position")
-                sleep(0.1)
-                self.Gal.x = self.galvanodialog.xpos
-                self.Gal.y = self.galvanodialog.ypos
-                sleep(0.1)
-                self.imgProcessed = self.img3dProcessed
-                self.imgSHG = self.img3dSHG
-                self.imgRef = self.img3dRef
-                self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale],xvals=self.arr_c)
-                return
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
+                lines.append(folderpath)
+            with open('address.txt','w') as f:
+                f.writelines(lines)
+            os.chdir(folderpath)
+            self.data_address = folderpath
         
+    def load_image_from_file(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "","All Files (*);;Parameter Files (*.txt)", options=options)
+        if files:
+            dataSet = NSIDReader(files[0]).read()
+            self.loadData(dataSet)
         
-    def update_data37(self):
-        self.spinBox_zmove.setValue(int(self.arr_c[self.i]))
-        self.display_stagemove_msg()
-        self.Gal.x = self.arr_a[0]+self.Gal.xhome
-        self.Gal.y = self.arr_b[0]+self.Gal.yhome
-        self.Gal.start_scanxy(self.arr_a,self.arr_b)
-        self.timer1 = QtCore.QTimer()
-        self.timecount = QtCore.QElapsedTimer()
-        self.timer1.setInterval(200)
-        self.timer1.timeout.connect(self.update_data37Frame)
-        self.timer1.start()
-        self.timecount.start()
-        
-    def gal_stepscanxy(self,xarr,yarr):
-        self.Gal.xarr = xarr/self.Gal.xscale
-        self.Gal.yarr = yarr/self.Gal.yscale
-        self.Gal.img_data = -ones((len(xarr),len(yarr)))
-        self.Gal.ref_data = -ones((len(xarr),len(yarr)))
-        self.Gal.processed_data = -ones((len(xarr),len(yarr)))
-        self.j = 0
-        self.i = 0
-        self.plot_realtime_data30()
-        """
-        tstep = int(self.tperstep_set.value()*1000) # ms
-        loop = QEventLoop()
-        for j in range(len(self.Gal.yarr)):
-            for i in range(len(self.Gal.xarr)):
-                if j%2 == 0:
-                    self.Gal.gotoxy(self.Gal.xarr[i],self.Gal.yarr[j])
+    def loadData(self, dataSet):
+        no_of_datasets = len(dataSet)
+        for dset in dataSet:
+            if dset.modality == 'Scan Information':
+                info = dset.metadata['metadata']
+                if 'metadata' in info.keys():
+                    info = info['metadata']
+                break
+        self.imageData = [[]]
+        l = 0
+        if info['Dimension'] == 1:
+            l = 1
+            self.imageData[0] = array(dataSet[0].aAxis)
+        for i in range(no_of_datasets-2+l):
+            self.imageData.append([])
+        for dset in dataSet:
+            if 'raw' in dset.title:
+                if 'Retrace' in dset.title:
+                    self.imageData[l+3] = array(dset)
                 else:
-                    self.Gal.gotoxy(self.Gal.xarr[-i-1],self.Gal.yarr[j])
-                self.Gal.counter.start()
-                QTimer.singleShot(tstep, loop.quit)
-                self.Gal.counter.stop()
-                self.Gal.reference.stop()
-                if j%2 == 0:
-                    self.Gal.img_data[i,j] = self.Gal.counter.read()    
+                    self.imageData[l] = array(dset)
+            elif 'reference' in dset.title:
+                if 'Retrace' in dset.title:
+                    self.imageData[l+4] = array(dset)
                 else:
-                    self.Gal.img_data[-i-1,j] = self.Gal.counter.read()
-        """
+                    self.imageData[l+1] = array(dset)
+            elif 'processed' in dset.title:
+                if 'Retrace' in dset.title:
+                    self.imageData[l+5] = array(dset)
+                else:
+                    self.imageData[l+2] = array(dset)
+        #print(len(self.imageData))
+        #print(self.imageData[0].shape)
+        dset = []
+        for data in dataSet:
+            dset.append(data.copy())
+        self.collection.append(dset)
+        self.updateCollection(self.collection[-1])
+        self.display_image_from_collection(dset,'processed')
+        dataSet[0].h5_dataset.file.close()
+    
+    def add_menu(self, data, menu_obj):
+        if isinstance(data,dict):
+            for k,v in data.items():
+                sub_menu = QtWidgets.QMenu(k, menu_obj)
+                menu_obj.addMenu(sub_menu)
+                self.add_menu(v, sub_menu)
+        elif isinstance(data, list):
+            for element in data:
+                self.add_menu(element, menu_obj)
+        else:
+            action = menu_obj.addAction(data)
+            action.setIconVisibleInMenu(False)
+        
+    def updateCollection(self,dset):
+        imageNames = []
+        for item in dset:
+            if item.modality == 'Scan Information':
+                fname = item.metadata['metadata']['File Name']
+            else:
+                imageNames.append(item.title.split('/')[-1])
+        menuItem = {fname:imageNames}
+        self.add_menu(menuItem,self.imageMenu)
+    
+    def get_image_from_collection(self,x):
+        imageName = x.text()
+        fileName = x.parent().title()
+        for item in self.collection:
+            for image in item:
+                if image.modality == 'Scan Information':
+                    info = image.metadata['metadata']
+                    break
+            if info['File Name'] == fileName:
+                self.display_image_from_collection(item,imageName)
+                break
+    
+    def display_image_from_collection(self,item,imageName):
+        for image in item:
+            if image.modality == 'Scan Information':
+                info = image.metadata['metadata']
+                break
+        fileName = info['File Name']
+        for image in item:
+            if imageName.lower() in image.title.lower():
+                self.rimage = array(image)
+                self.rxpos = info['x-position']
+                self.rypos = info['y-position']
+                self.rzpos = info['z-position']
+                self.raAx = info['aAxis']['Axis']
+                if info['Dimension'] == 1:
+                    self.raAxis = array(image.aAxis)
+                    labels={'bottom': (image.aAxis.quantity,image.aAxis.units), 
+                            'left':(image.quantity,image.units),
+                            'top':"",
+                            'right':""}
+                    if self.ref_plot.isVisible():
+                        self.ref_plot.hide()
+                        self.ref_plot1d.show()
+                    self.ref_plot1d.setLabels(**labels)
+                    self.ref_plot1d.clear()
+                    self.ref_plot1d.enableAutoRange(enable = True)
+                    pen2 = pg.mkPen(color = (0,0,255), width = 2)
+                    self.ref_plot1d.plot(self.raAxis,self.rimage,pen=pen2)
+                    self.ref_plot1d.setTitle("Scan Collection"+'<br><font size="-0.5" color="white">'+fileName+', '+imageName+ ' Image')
+                elif info['Dimension'] == 2:
+                    self.rbAx = info['bAxis']['Axis']
+                    self.ra1 = info['aAxis']['Size']
+                    self.rb1 = info['bAxis']['Size']
+                    self.rascale = info['aAxis']['Scale']
+                    self.rbscale = info['bAxis']['Scale']
+                    labels={'bottom': (image.aAxis.quantity,image.aAxis.units), 
+                            'left':(image.bAxis.quantity,image.bAxis.units),
+                            'top':"",
+                            'right':""}
+                    if not self.ref_plot.isVisible():
+                        self.ref_plot1d.hide()
+                        self.ref_plot.show()
+                    self.ref_plot.view.setLabels(**labels)
+                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale])
+                    self.ref_plot.view.setTitle("Scan Collection"+'<br><font size="-0.5" color="white">'+fileName+', '+imageName+ ' Image')
+                elif info['Dimension'] == 3:
+                    self.rbAx = info['bAxis']['Axis']
+                    self.rcAxis = array(image.cAxis)
+                    self.ra1 = info['aAxis']['Size']
+                    self.rb1 = info['bAxis']['Size']
+                    self.rascale = info['aAxis']['Scale']
+                    self.rbscale = info['bAxis']['Scale']
+                    labels={'bottom': (image.aAxis.quantity,image.aAxis.units), 
+                            'left':(image.bAxis.quantity,image.bAxis.units),
+                            'top':"",
+                            'right':""}
+                    if not self.ref_plot.isVisible():
+                        self.ref_plot1d.hide()
+                        self.ref_plot.show()
+                    self.ref_plot.view.setLabels(**labels)
+                    self.ref_plot.setImage(self.rimage,pos=[0,0],scale=[self.rascale,self.rbscale],xvals = self.rcAxis)
+                    self.ref_plot.setCurrentIndex(0)
+                    self.ref_plot.view.setTitle("Scan Collection"+'<br><font size="-0.5" color="white">'+fileName+', '+imageName+ ' Image')
+                break
 
-    def plot_realtime_data30(self):
-        self.timer = QtCore.QTimer()
-        self.timecount = QtCore.QElapsedTimer()
-        tstep = int(self.tperstep_set.value()*1000)
-        self.timer.setInterval(tstep)
-        self.timer.timeout.connect(self.update_data30)
-        self.timer.start()
-        self.timecount.start()
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        #self.liveplot.setImage(self.img,pos=[self.x0,self.y0],scale=[self.xscale,self.yscale])
+    def redraw_PlotType_menu(self):
+        self.plot_type.clear()
+        self.plot_type.addItems(['Raw SHG Data Trace',
+                                 'Reference Data Trace',
+                                 'Processed Data Trace',
+                                 'Raw SHG Data Retrace',
+                                 'Reference Data Retrace',
+                                 'Processed Data Retrace'])
+    
+    def draw_original_PlotType_menu(self):
+        self.plot_type.clear()
+        self.plot_type.addItems(['Raw SHG Data',
+                                 'Reference Data',
+                                 'Processed Data'])
         
-    def update_data30(self):
-        # update the plot data, and anything you want to change on screen
-        shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()*1000000
-        # TODO prompt if reference detector is not switched on
-        if ref < 1000:
-            ref = 1
-        if self.j%2 == 0:
-            self.Gal.img_data[self.i,self.j] = shg
-            self.Gal.ref_data[self.i,self.j] = ref
-            self.Gal.processed_data[self.i,self.j] = shg/ref
-            self.Gal.gotoxy(self.Gal.xarr[self.i],self.Gal.yarr[self.j])
+    def finishAction(self):
+        # set stage speed to original
+        # be ready for next scan
+        self.start_button.setEnabled(True)
+        self.scan_type.setEnabled(True)
+        self.xactive.setEnabled(True)
+        self.yactive.setEnabled(True)
+        self.zactive.setEnabled(True)
+        self.x_state_change()
+        self.y_state_change()
+        self.z_state_change()
+        self.stageX.setEnabled(True)
+        self.stageY.setEnabled(True)
+        self.stageZ.setEnabled(True)
+        self.toolButton_xhome.setEnabled(True)
+        self.toolButton_yhome.setEnabled(True)
+        self.toolButton_zhome.setEnabled(True)
+        self.select_scan_area.setEnabled(True)
+        self.scan_kind.setEnabled(True)
+        self.scan_mode.setEnabled(True)
+        self.saveDir_button.setEnabled(True)
+        if self.scan_type.currentIndex() == 1:
+            self.tperstep_set.setEnabled(True)
         else:
-            self.Gal.img_data[-self.i-1,self.j] = shg
-            self.Gal.ref_data[-self.i-1,self.j] = ref
-            self.Gal.processed_data[-self.i-1,self.j] = shg/ref
-            self.Gal.gotoxy(self.Gal.xarr[-self.i-1],self.Gal.yarr[self.j])
-        self.Gal.counter.stop()
-        self.Gal.reference.stop()
-        self.imgProcessed = self.Gal.processed_data
-        self.i = self.i + 1
-        if self.i > len(self.Gal.xarr)-1:
-            self.j = self.j+1
-            self.i = 0
-        if self.j > len(self.Gal.yarr)-1:
-            self.imgSHG = self.Gal.img_data
-            self.imgRef = self.Gal.ref_data
-            self.stop_program()
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            #self.spinBox_xmove.setValue(int(self.xpos.value()))
-            #self.spinBox_ymove.setValue(int(self.ypos.value()))
-            return
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        
-    def stage_stepscanxy(self,xarr,yarr):
-        self.Stage.img_data = -ones((len(xarr),len(yarr)))
-        self.Stage.ref_data = -ones((len(xarr),len(yarr)))
-        self.Stage.processed_data = -ones((len(xarr),len(yarr)))
-        self.Stage.xarr = xarr
-        self.Stage.yarr = yarr
-        self.i = 0
-        self.j = 0
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data32)        
-        #self.liveplot.setImage(self.img,pos=[self.x0,self.y0],scale=[self.xscale,self.yscale])
-        
-    def update_data32(self):
-        # update the plot data, and anything you want to change on screen
-        shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()*1000000
-        if ref < 1000:
-            ref = 1
-        if self.j%2 == 0:
-            self.Stage.img_data[self.i,self.j] = shg
-            self.Stage.ref_data[self.i,self.j] = ref
-            self.Stage.processed_data[self.i,self.j] = shg/ref
-            self.Stage.goto_xy(self.Stage.xarr[self.i],self.Stage.yarr[self.j])
-        else:
-            self.Stage.img_data[-self.i-1,self.j] = shg
-            self.Stage.ref_data[-self.i-1,self.j] = ref
-            self.Stage.processed_data[-self.i-1,self.j] = shg/ref
-            self.Stage.goto_xy(self.Stage.xarr[-self.i-1],self.Stage.yarr[self.j])
-        self.Gal.counter.stop()
-        self.Gal.reference.stop()
-        self.imgProcessed = self.Stage.processed_data
-        self.i = self.i + 1
-        if self.i > len(self.Stage.xarr)-1:
-            self.j = self.j+1
-            self.i = 0
-        if self.j > len(self.Stage.yarr)-1 or self.stopcall:
-            self.imgSHG = self.Stage.img_data
-            self.imgRef = self.Stage.ref_data
-            self.start_button.setEnabled(True)
-            self.scan_type.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-            sleep(0.1)
-            self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-            self.spinBox_xmove.setValue(self.Stage.x)
-            self.spinBox_ymove.setValue(self.Stage.y)            
-            return
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-        if self.xstep.value() > 20 or self.ystep.value() > 20:
-            while self.Stage.is_xmoving():
-                while self.Stage.is_ymoving():
+            self.srate_set.setEnabled(True)
+        self.stop_button.setEnabled(False)
+        self.stopcall = True
+        self.comments.setEnabled(True)
+        self.sample_name.setEnabled(True)
+        dataSet = NSIDReader(self.last_saved_filename).read()
+        self.loadData(dataSet)
+        if len(dataSet) > 4:
+            self.redraw_PlotType_menu()
+        self.stageX.setValue(int(self.Stage.x))
+        self.stageY.setValue(int(self.Stage.y))
+        self.stageZ.setValue(int(self.Stage.z))
+        self.statusBar().insertPermanentWidget(0,self.zLabel)
+        info = None
+        for dset in dataSet:
+            if dset.modality == 'Scan Information':
+                info = dset.metadata['metadata']
+                if info['Scan Completed?'] == 'Yes':
+                    os.chdir(self.pth)
+                    with open("scanTimeData.txt",'a') as f:
+                        total_points = 1
+                        total_area = 1
+                        try:
+                            total_points *= int(info['aAxis']['Points'])
+                            total_area *= float(info['aAxis']['Size'])
+                            total_points *= int(info['bAxis']['Points'])
+                            total_area *= float(info['bAxis']['Size'])
+                            total_points *= int(info['cAxis']['Points'])
+                            total_area *= float(info['cAxis']['Size'])
+                        except KeyError:
+                            pass
+                        line = "Date: {0}, Scan: {1}, Speed: {2} pps, Points: {3}, Area: {4}, Total Scan Time: {5}\n".format(info["Date & Time"],
+                                                                       info['Scan Type'],
+                                                                       info['Scan Speed'],
+                                                                       total_points,
+                                                                       total_area,
+                                                                       info['Total Scan Time'])
+                        f.write(line)
+                        os.chdir(self.data_address)
+                break
+        if self.scanNum == Select.Z_Scan_Step_Stage:
+            if info:
+                peak_position = 0
+                peak_intensity = 0
+                try:
+                    peak_position = int(info['Z-Focus Peak Position'])
+                    peak_intensity = info['Z-Focus Peak Intensity']
+                except KeyError:
                     pass
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data32)        
-
-    def stage_stepscanyz(self,yarr,zarr):
-        self.Stage.img_data = -ones((len(yarr),len(zarr)))
-        self.Stage.ref_data = -ones((len(yarr),len(zarr)))
-        self.Stage.processed_data = -ones((len(yarr),len(zarr)))
-        self.Stage.yarr = yarr
-        self.Stage.zarr = zarr
-        self.i = 0
-        self.j = 0
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)        
-        
-    def update_data20(self):
-        # update the plot data, and anything you want to change on screen
-        shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()*1000000
-        if ref < 1000:
-            ref = 1
-        if self.j%2 == 0:
-            self.Stage.img_data[self.i,self.j] = shg
-            self.Stage.ref_data[self.i,self.j] = ref
-            self.Stage.processed_data[self.i,self.j] = shg/ref
-            self.Stage.goto_yz(self.Stage.yarr[self.i],self.Stage.zarr[self.j])
-        else:
-            self.Stage.img_data[-self.i-1,self.j] = shg
-            self.Stage.ref_data[-self.i-1,self.j] = ref
-            self.Stage.processed_data[-self.i-1,self.j] = shg/ref
-            self.Stage.goto_yz(self.Stage.yarr[-self.i-1],self.Stage.zarr[self.j])
-        self.Gal.counter.stop()
-        self.Gal.reference.stop()
-        self.imgProcessed = self.Stage.processed_data
-        self.i = self.i + 1
-        if self.i > len(self.Stage.yarr)-1:
-            self.j = self.j+1
-            self.i = 0
-        if self.j > len(self.Stage.zarr)-1 or self.stopcall:
-            self.imgSHG = self.Stage.img_data
-            self.imgRef = self.Stage.ref_data
-            self.start_button.setEnabled(True)
-            self.scan_type.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-            sleep(0.1)
-            self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-            self.spinBox_ymove.setValue(self.Stage.y)
-            self.spinBox_zmove.setValue(self.Stage.z)
-            return
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-        if self.ystep.value() > 20 or self.zstep.value() > 20:
-            while self.Stage.is_ymoving():
-                while self.Stage.is_zmoving():
-                    pass
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data20)
-        
-    def stage_stepscanxz(self,xarr,zarr):
-        self.Stage.img_data = -ones((len(xarr),len(zarr)))
-        self.Stage.ref_data = -ones((len(xarr),len(zarr)))
-        self.Stage.processed_data = -ones((len(xarr),len(zarr)))
-        self.Stage.xarr = xarr
-        self.Stage.zarr = zarr
-        self.i = 0
-        self.j = 0
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data24)        
-        
-    def update_data24(self):
-        # update the plot data, and anything you want to change on screen
-        shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()*1000000
-        if ref < 1000:
-            ref = 1
-        if self.j%2 == 0:
-            self.Stage.img_data[self.i,self.j] = shg
-            self.Stage.ref_data[self.i,self.j] = ref
-            self.Stage.processed_data[self.i,self.j] = shg/ref
-            self.Stage.goto_xz(self.Stage.xarr[self.i],self.Stage.zarr[self.j])
-        else:
-            self.Stage.ref_data[-self.i-1,self.j] = shg
-            self.Stage.ref_data[-self.i-1,self.j] = ref
-            self.Stage.processed_data[self.i,self.j] = shg/ref
-            self.Stage.goto_xz(self.Stage.xarr[-self.i-1],self.Stage.zarr[self.j])
-        self.Gal.counter.stop()
-        self.Gal.reference.stop()
-        self.imgProcessed = self.Stage.processed_data
-        self.i = self.i + 1
-        if self.i > len(self.Stage.xarr)-1:
-            self.j = self.j+1
-            self.i = 0
-        if self.j > len(self.Stage.zarr)-1 or self.stopcall:
-            self.imgSHG = self.Stage.img_data
-            self.imgRef = self.Stage.ref_data
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-            self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-            sleep(0.1)
-            self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-            self.spinBox_xmove.setValue(self.Stage.x)
-            self.spinBox_zmove.setValue(self.Stage.z)
-            return
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-        if self.xstep.value() > 20 or self.zstep.value() > 20:
-            while self.Stage.is_xmoving():
-                while self.Stage.is_zmoving():
-                    pass
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data24)
-        
-    def stage_stepscanx(self,xarr):
-        self.lineEdit.setText('Stage: x = {0}'.format(self.Stage.xpos()))
-        self.xarr = xarr
-        self.Stage.Oneddata = [self.xarr[0]]
-        self.Stage.count_data = [0]
-        self.liveplot1d.clear()
-        self.i = 0
-        pen2 = pg.mkPen(color = (0,0,255), width = 2)
-        self.data_line = self.liveplot1d.plot(self.Stage.Oneddata,self.Stage.count_data,pen=pen2)
-        del self.Stage.Oneddata[0]
-        del self.Stage.count_data[0]
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data4)
-        
-    def update_data4(self):
-        self.Stage.count_data.append(self.Gal.counter.read())
-        self.Gal.counter.stop()
-        self.Stage.Oneddata.append(self.xarr[self.i])
-        self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-        self.lineEdit.setText('Stage: x = {0}'.format(self.xarr[self.i]))
-        self.i = self.i + 1
-        if self.i >= self.apoints or self.stopcall:
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            #self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-            self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-            self.spinBox_xmove.setValue(self.Stage.x)
-            return
-        self.Stage.x = self.xarr[self.i]
-        if self.xstep.value() > 20:
-            while self.Stage.is_xmoving():
-                pass
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data4)
-        
-    def stage_stepscany(self,yarr):
-        self.yarr = yarr
-        self.Stage.Oneddata = [self.yarr[0]]
-        self.Stage.count_data = [0]
-        self.liveplot1d.clear()
-        self.i = 0
-        pen2 = pg.mkPen(color = (0,0,255), width = 2)
-        self.data_line = self.liveplot1d.plot(self.Stage.Oneddata,self.Stage.count_data,pen=pen2)
-        del self.Stage.Oneddata[0]
-        del self.Stage.count_data[0]
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data8)
-        
-    def update_data8(self):
-        self.Stage.count_data.append(self.Gal.counter.read())
-        self.Gal.counter.stop()
-        self.Stage.Oneddata.append(self.yarr[self.i])
-        self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-        self.lineEdit.setText('Stage: y = {0}'.format(self.yarr[self.i]))
-        self.i = self.i + 1
-        if self.i >= self.apoints or self.stopcall:
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-            self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-            self.spinBox_ymove.setValue(self.Stage.y)
-            return
-        self.Stage.y = self.yarr[self.i]
-        if self.ystep.value() > 20:
-            while self.Stage.is_ymoving():
-                pass
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data8)
-        
-    def stage_stepscanz(self,zarr):
-        self.zarr = zarr
-        self.Stage.Oneddata = [self.zarr[0]]
-        self.Stage.count_data = [0]
-        self.liveplot1d.clear()
-        self.i = 0
-        pen2 = pg.mkPen(color = (0,0,255), width = 2)
-        self.data_line = self.liveplot1d.plot(self.Stage.Oneddata,self.Stage.count_data,pen=pen2)
-        del self.Stage.Oneddata[0]
-        del self.Stage.count_data[0]
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data12)
-        
-    def update_data12(self):
-        self.Stage.count_data.append(self.Gal.counter.read())
-        self.Gal.counter.stop()
-        self.Stage.Oneddata.append(self.zarr[self.i])
-        self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-        self.lineEdit.setText('Stage: z = {0}'.format(self.zarr[self.i]))
-        self.i = self.i + 1
-        if self.i >= self.apoints or self.stopcall:
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.data_line.setData(self.Stage.Oneddata,self.Stage.count_data)
-            self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-            self.spinBox_zmove.setValue(self.Stage.z)
-            return
-        self.Stage.z = self.zarr[self.i]
-        if self.zstep.value() > 20:
-            while self.Stage.is_zmoving():
-                pass
-        self.Gal.counter.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data12)
-        
-    def stage_stepscanxyz(self,xarr,yarr,zarr):
-        self.Stage.img_data = -ones((len(xarr),len(yarr)))
-        self.Stage.ref_data = -ones((len(xarr),len(yarr)))
-        self.Stage.processed_data = -ones((len(xarr),len(yarr)))
-        self.img3dSHG = -ones((len(zarr),len(xarr),len(yarr)))
-        self.img3dRef = -ones((len(zarr),len(xarr),len(yarr)))
-        self.img3dProcessed = -ones((len(zarr),len(xarr),len(yarr)))
-        self.Stage.xarr = xarr
-        self.Stage.yarr = yarr
-        self.Stage.zarr = zarr
-        self.i = 0
-        self.j = 0
-        self.k = 0
-        self.timer = QtCore.QTimer()
-        self.tstep = int(self.tperstep_set.value()*1000)
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data40)        
-        
-    def update_data40(self):
-        # update the plot data, and anything you want to change on screen
-        shg = self.Gal.counter.read()
-        ref = self.Gal.reference.read()*1000000
-        if ref < 1000:
-            ref = 1
-        if self.j%2 == 0:
-            self.Stage.img_data[self.i,self.j] = shg
-            self.Stage.ref_data[self.i,self.j] = ref
-            self.Stage.processed_data[self.i,self.j] = shg/ref
-            self.Stage.goto_xy(self.Stage.xarr[self.i],self.Stage.yarr[self.j])
-        else:
-            self.Stage.img_data[-self.i-1,self.j] = shg
-            self.Stage.ref_data[-self.i-1,self.j] = ref
-            self.Stage.processed_data[-self.i-1,self.j] = shg/ref
-            self.Stage.goto_xy(self.Stage.xarr[-self.i-1],self.Stage.yarr[self.j])
-        self.Gal.counter.stop()
-        self.Gal.reference.stop()
-        self.imgProcessed = self.Stage.processed_data
-        self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale])
-        self.i = self.i + 1        
-        if self.i > len(self.Stage.xarr)-1:
-            self.j = self.j+1
-            self.i = 0
-        if self.j > len(self.Stage.yarr)-1:
-            self.img3dProcessed[self.k,:,:] = self.Stage.processed_data
-            self.img3dSHG[self.k,:,:] = self.Stage.img_data
-            self.img3dRef[self.k,:,:] = self.Stage.ref_data
-            self.k = self.k+1
-            self.i = 0
-            self.j = 0
-            self.Stage.img_data = -ones((len(self.Stage.xarr),len(self.Stage.yarr)))
-        if self.k > len(self.Stage.zarr)-1 or self.stopcall:
-            self.start_button.setEnabled(True)
-            self.stop_button.setEnabled(False)
-            self.pause_button.setEnabled(False)
-            self.imgProcessed = self.img3dProcessed
-            self.imgSHG = self.img3dSHG
-            self.imgRef = self.img3dRef
-            self.liveplot.setImage(self.imgProcessed,pos=[self.a0,self.b0],scale=[self.ascale,self.bscale],xvals=self.Stage.zarr)
-            self.Stage.set_xspeed(F=int(self.ds102dialog.xspeed))
-            sleep(0.1)
-            self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
-            sleep(0.1)
-            self.Stage.set_zspeed(F=int(self.ds102dialog.zspeed))
-            self.spinBox_xmove.setValue(self.Stage.x)
-            self.spinBox_ymove.setValue(self.Stage.y)
-            self.spinBox_zmove.setValue(self.Stage.z)
-            return
-        if self.i == 0 and self.j == 0:
-            sleep(0.1)
-            self.Stage.goto_xyz(self.Stage.xarr[self.i],self.Stage.yarr[self.j],self.Stage.zarr[self.k])
-            sleep(0.1)
-            self.display_stagemove_msg()
-            self.spinBox_zmove.setValue(self.Stage.z)
-        if self.xstep.value() > 20 or self.ystep.value() > 20:
-            while self.Stage.is_xmoving():
-                while self.Stage.is_ｙmoving():
-                    while self.Stage.is_zmoving():
-                        pass
-        self.Gal.counter.start()
-        self.Gal.reference.start()
-        self.timer.singleShot(self.tstep, QtCore.Qt.PreciseTimer, self.update_data40)
-        
-    def x_state_change(self):
-        if self.xactive.isChecked():
+                if peak_position and peak_intensity:
+                    peak_label = pg.TextItem('',**{'color': '#FFF'})
+                    font=QtGui.QFont()
+                    font.setPixelSize(20)
+                    peak_label.setFont(font)
+                    peak_label.setPos(QtCore.QPointF(info['z-position'],peak_intensity))
+                    peak_label.setText('Peak Position: {}'.format(peak_position))
+                    self.ref_plot1d.addItem(peak_label)
+                    mesBox = QMessageBox(self)
+                    mesBox.setWindowTitle("Move Z to Focus?")
+                    mesBox.setIcon(QMessageBox.Question)
+                    mesBox.setText("Automatically set Z to focus?")
+                    mesBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                    returnValue = mesBox.exec()
+                    if returnValue == QMessageBox.Ok:
+                        if info['Z-Focus peak on'] == 'Retrace':
+                            self.Stage.z = peak_position + 20
+                        elif info['Z-Focus peak on'] == 'Trace':
+                            self.Stage.z = peak_position - 20
+                        while self.Stage.is_zmoving():
+                            pass
+                        self.stageZ.setValue(peak_position)
+                
+    def x_state_change(self,state = True):
+        if self.xactive.isChecked() and state:
             self.xpos.setEnabled(True)
             self.xsize.setEnabled(True)
             self.xstep.setEnabled(True)
@@ -1506,8 +1410,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.xpoints.setEnabled(False)
             self.xscanorder.setEnabled(False)
     
-    def y_state_change(self):
-        if self.yactive.isChecked():
+    def y_state_change(self,state = True):
+        if self.yactive.isChecked() and state:
             self.ypos.setEnabled(True)
             self.ysize.setEnabled(True)
             self.ystep.setEnabled(True)
@@ -1520,8 +1424,8 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ypoints.setEnabled(False)
             self.yscanorder.setEnabled(False)
             
-    def z_state_change(self):
-        if self.zactive.isChecked():
+    def z_state_change(self,state = True):
+        if self.zactive.isChecked() and state:
             self.zpos.setEnabled(True)
             self.zsize.setEnabled(True)
             self.zstep.setEnabled(True)
@@ -1534,64 +1438,289 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.zpoints.setEnabled(False)
             self.zscanorder.setEnabled(False)
     
-    def scan_method_change(self):
-        if self.scan_method.currentIndex() == 0:
+    def scan_type_change(self):
+        if self.scan_type.currentIndex() == 1:
+            self.scan_method = 1
+            self.scan_kind.setCurrentIndex(self.original_scanKind)
+            self.autochange = False
+            self.srate_set.setEnabled(False)
+            self.tperstep_set.setEnabled(True)
+            self.xsize.setMaximum(self.ds102dialog.xmax-self.xpos.value())
+            self.xsize.setSingleStep(1)
+            self.xsize.setDecimals(0)
+            self.ysize.setMaximum(self.ds102dialog.ymax-self.ypos.value())
+            self.ysize.setSingleStep(1)
+            self.ysize.setDecimals(0)
+            self.xstep.setMinimum(1)
+            self.xstep.setMaximum(self.ds102dialog.xmax-self.xpos.value())
+            self.xstep.setDecimals(0)
+            self.xstep.setSingleStep(1)
+            self.ystep.setMinimum(1)
+            self.ystep.setMaximum(self.ds102dialog.ymax-self.ypos.value())
+            self.ystep.setDecimals(0)
+            self.ystep.setSingleStep(1)
+            self.xpos.setDecimals(0)
+            self.ypos.setDecimals(0)
+        else:
+            self.scan_method = 0
+            self.original_scanKind = self.scan_kind.currentIndex()
+            self.autochange = True
+            self.scan_kind.setCurrentIndex(3)
             self.srate_set.setEnabled(True)
             self.tperstep_set.setEnabled(False)
             self.xstep.setMinimum(0.0001)
+            self.xstep.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.xstep.setDecimals(4)
+            self.xstep.setSingleStep(0.01)
             self.ystep.setMinimum(0.0001)
+            self.ystep.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             self.ystep.setDecimals(4)
-        elif self.scan_method.currentIndex() == 1:
-            self.srate_set.setEnabled(False)
-            self.tperstep_set.setEnabled(True)
-        
-    def scan_type_change(self):
-        if self.scan_type.currentIndex() == 1:
-            if self.scan_method.currentIndex() == 0:
-                self.scan_method.setCurrentIndex(1)
-            self.scan_method.model().item(0).setEnabled(False)
-            self.xsize.setMaximum(self.ds102dialog.xmax-self.xpos.value())
-            self.ysize.setMaximum(self.ds102dialog.ymax-self.ypos.value())
-            self.xstep.setMinimum(1)
-            self.xstep.setDecimals(0)
-            self.ystep.setMinimum(1)
-            self.ystep.setDecimals(0)
-            self.xpos.setDecimals(0)
-            self.ypos.setDecimals(0)
-            self.xsize.setDecimals(0)
-            self.ysize.setDecimals(0)
-        else:
-            self.scan_method.model().item(0).setEnabled(True)
-            if self.scan_method.currentIndex() == 1:
-                self.scan_method.setCurrentIndex(0)
-            self.xpos.setMaximum(self.galvanodialog.xmax)
-            self.xpos.setMinimum(self.galvanodialog.xmin)
-            self.ypos.setMaximum(self.galvanodialog.ymax)
-            self.ypos.setMinimum(self.galvanodialog.ymin)
-            self.xsize.setMaximum(self.galvanodialog.xmax-self.xpos.value())
-            self.ysize.setMaximum(self.galvanodialog.ymax-self.ypos.value())
-            self.xstep.setMinimum(0.0001)
-            self.xstep.setDecimals(4)
-            self.ystep.setMinimum(0.0001)
-            self.ystep.setDecimals(4)
-            self.xpos.setDecimals(4)
-            self.ypos.setDecimals(4)
+            self.ystep.setSingleStep(0.01)
+            self.xsize.setMaximum(self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.xsize.setDecimals(4)
+            self.xsize.setSingleStep(0.1)
+            self.ysize.setMaximum(self.galvanodialog.ymax-self.galvanodialog.ymin)
             self.ysize.setDecimals(4)
-            
+            self.ysize.setSingleStep(0.1)
+    
+    def load_scan_params(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        files, _ = QtWidgets.QFileDialog.getOpenFileNames(self,"QFileDialog.getOpenFileNames()", "","All Files (*);;Parameter Files (*.txt)", options=options)
+        if files:
+            with open(files[0],'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    l = line.split()
+                    key = l[0]
+                    value = l[2]
+                    if key == "xpos":
+                        self.xpos.setValue(int(float(value)))
+                    elif key == "ypos":
+                        self.ypos.setValue(int(float(value)))
+                    elif key == "zpos":
+                        self.zpos.setValue(int(float(value)))
+                    elif key == "xactive":
+                        self.xactive.setChecked(bool(value))
+                    elif key == "yactive":
+                        self.yactive.setChecked(bool(value))
+                    elif key == "zactive":
+                        self.zactive.setChecked(bool(value))
+                    elif key == "xsize":
+                        self.xsize.setValue(float(value))
+                    elif key == "ysize":
+                        self.ysize.setValue(float(value))
+                    elif key == "zsize":
+                        self.zsize.setValue(float(value))
+                    elif key == "xstep":
+                        self.xstep.setValue(float(value))
+                    elif key == "ystep":
+                        self.ystep.setValue(float(value))
+                    elif key == "zstep":
+                        self.zstep.setValue(float(value))
+                    elif key == "xpoints":
+                        self.xpoints.setValue(int(float(value)))
+                    elif key == "ypoints":
+                        self.ypoints.setValue(int(float(value)))
+                    elif key == "zpoints":
+                        self.zpoints.setValue(int(float(value)))
+                    elif key == "xorder":
+                        self.xscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "yorder":
+                        self.yscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "zorder":
+                        self.zscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "scanRate":
+                        self.srate_set.setValue(float(value))
+                        self.tperstep_set.setValue(1/self.srate_set.value())
+                    elif key == "stageX":
+                        self.stageX.setValue(int(float(value)))
+                    elif key == "stageY":
+                        self.stageY.setValue(int(float(value)))
+                    elif key == "stageZ":
+                        self.stageZ.setValue(int(float(value)))
+                    elif key.lower() == "filename":
+                        self.sample_name.setText(value)
+                    elif key.lower() == "scankind":
+                        self.scan_kind.setCurrentIndex(int(value))
+                    elif key.lower() == "scantype":
+                        self.scan_type.setCurrentIndex(int(value))
+                    elif key.lower() == "scanmode":
+                        self.scan_mode.setCurrentIndex(int(value))
+                    elif key.lower() == "comments":
+                        comments = "".join(lines[lines.index(line)+1:])
+                        font = QtGui.QFont()
+                        font.setFamily('Serif')
+                        font.setPointSize(12)
+                        self.comments.setText(comments)
+                        self.comments.setFont(font)
+                        break
+    def load_default_scan_params(self):
+        file = self.setting_address+"\default_params.prm"
+        if os.path.isfile(file):
+            with open(file,'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    l = line.split()
+                    key = l[0]
+                    value = l[2]
+                    if key == "xpos":
+                        self.xpos.setValue(int(float(value)))
+                    elif key == "ypos":
+                        self.ypos.setValue(int(float(value)))
+                    elif key == "zpos":
+                        self.zpos.setValue(int(float(value)))
+                    elif key == "xactive":
+                        self.xactive.setChecked(bool(value))
+                    elif key == "yactive":
+                        self.yactive.setChecked(bool(value))
+                    elif key == "zactive":
+                        self.zactive.setChecked(bool(value))
+                    elif key == "xsize":
+                        self.xsize.setValue(float(value))
+                    elif key == "ysize":
+                        self.ysize.setValue(float(value))
+                    elif key == "zsize":
+                        self.zsize.setValue(float(value))
+                    elif key == "xstep":
+                        self.xstep.setValue(float(value))
+                    elif key == "ystep":
+                        self.ystep.setValue(float(value))
+                    elif key == "zstep":
+                        self.zstep.setValue(float(value))
+                    elif key == "xpoints":
+                        self.xpoints.setValue(int(float(value)))
+                    elif key == "ypoints":
+                        self.ypoints.setValue(int(float(value)))
+                    elif key == "zpoints":
+                        self.zpoints.setValue(int(float(value)))
+                    elif key == "xorder":
+                        self.xscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "yorder":
+                        self.yscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "zorder":
+                        self.zscanorder.setCurrentIndex(int(value)-1)
+                    elif key == "scanRate":
+                        self.srate_set.setValue(float(value))
+                        self.tperstep_set.setValue(1/self.srate_set.value())
+                    elif key == "stageX":
+                        self.stageX.setValue(int(float(value)))
+                    elif key == "stageY":
+                        self.stageY.setValue(int(float(value)))
+                    elif key == "stageZ":
+                        self.stageZ.setValue(int(float(value)))
+                    elif key.lower() == "filename":
+                        self.sample_name.setText(value)
+                    elif key.lower() == "scankind":
+                        self.scan_kind.setCurrentIndex(int(value))
+                    elif key.lower() == "scantype":
+                        self.scan_type.setCurrentIndex(int(value))
+                    elif key.lower() == "scanmode":
+                        self.scan_mode.setCurrentIndex(int(value))
+                    elif key.lower() == "comments":
+                        comments = "".join(lines[lines.index(line)+1:])
+                        font = QtGui.QFont()
+                        font.setFamily('Serif')
+                        font.setPointSize(12)
+                        self.comments.setText(comments)
+                        self.comments.setFont(font)
+                        break
+        else:
+            print("Default parameter file not found.")
+    
+    def save_scan_params(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        file, _ = QtWidgets.QFileDialog.getSaveFileName(self,"QFileDialog.getSaveFileName()","","All Files (*);;Parameter Files (*.prm)", options=options)
+        lines = []
+        if file:
+            if file.find('.') == -1:
+                file = file + '.prm'
+            else:
+                index = file.rindex('.')
+                file = file[:index] + '.prm'
+            lines.append("FileName = "+self.sample_name.text()+"\n")
+            lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
+            lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
+            lines.append("xactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("yactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("zactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("xpos = "+str(self.xpos.value())+"\n")
+            lines.append("ypos = "+str(self.ypos.value())+"\n")
+            lines.append("zpos = "+str(self.zpos.value())+"\n")
+            lines.append("xsize = "+str(self.xsize.value())+"\n")
+            lines.append("ysize = "+str(self.ysize.value())+"\n")
+            lines.append("zsize = "+str(self.zsize.value())+"\n")
+            lines.append("xstep = "+str(self.xstep.value())+"\n")
+            lines.append("ystep = "+str(self.ystep.value())+"\n")
+            lines.append("zstep = "+str(self.zstep.value())+"\n")
+            lines.append("xpoints = "+str(self.xpoints.value())+"\n")
+            lines.append("ypoints = "+str(self.ypoints.value())+"\n")
+            lines.append("zpoints = "+str(self.zpoints.value())+"\n")
+            lines.append("xorder = "+str(self.xscanorder.currentIndex()+1)+"\n")
+            lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
+            lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
+            lines.append("scanRate = "+str(self.srate_set.value())+"\n")
+            lines.append("stageX = "+str(self.stageX.value())+"\n")
+            lines.append("stageY = "+str(self.stageY.value())+"\n")
+            lines.append("stageZ = "+str(self.stageZ.value())+"\n")
+            lines.append("Comments are below\n")
+            lines.append(self.comments.toPlainText())
+            with open(file,'w') as f:
+                f.writelines(lines)
+    
+    def setDefault_scan_params(self):
+        file = self.setting_address+"\default_params"
+        lines = []
+        if file:
+            if file.find('.') == -1:
+                file = file + '.prm'
+            else:
+                index = file.rindex('.')
+                file = file[:index] + '.prm'
+            lines.append("ScanType = "+str(self.scan_type.currentIndex())+"\n")
+            lines.append("ScanKind = "+str(self.scan_kind.currentIndex())+"\n")
+            lines.append("ScanMode = "+str(self.scan_mode.currentIndex())+"\n")
+            lines.append("xactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("yactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("zactive = "+str(self.xactive.isChecked())+"\n")
+            lines.append("xpos = "+str(self.xpos.value())+"\n")
+            lines.append("ypos = "+str(self.ypos.value())+"\n")
+            lines.append("zpos = "+str(self.zpos.value())+"\n")
+            lines.append("xsize = "+str(self.xsize.value())+"\n")
+            lines.append("ysize = "+str(self.ysize.value())+"\n")
+            lines.append("zsize = "+str(self.zsize.value())+"\n")
+            lines.append("xstep = "+str(self.xstep.value())+"\n")
+            lines.append("ystep = "+str(self.ystep.value())+"\n")
+            lines.append("zstep = "+str(self.zstep.value())+"\n")
+            lines.append("xpoints = "+str(self.xpoints.value())+"\n")
+            lines.append("ypoints = "+str(self.ypoints.value())+"\n")
+            lines.append("zpoints = "+str(self.zpoints.value())+"\n")
+            lines.append("xorder = "+str(self.xscanorder.currentIndex()+1)+"\n")
+            lines.append("yorder = "+str(self.yscanorder.currentIndex()+1)+"\n")
+            lines.append("zorder = "+str(self.zscanorder.currentIndex()+1)+"\n")
+            lines.append("scanRate = "+str(self.srate_set.value())+"\n")
+            lines.append("Comments are below\n")
+            lines.append(self.comments.toPlainText())
+            with open(file,'w') as f:
+                f.writelines(lines)
+    
+    def deleteCollection(self):
+        self.collection = []
+        self.imageMenu.clear()
+        self.ref_plot1d.clear()
+        self.ref_plot.clear()
+    
+    def removeImage(self):
+        # Remove the active image from the collection
+        print('Not Implemented yet')
+    
     def stop_program(self):
-        self.timer.stop()
-        self.stopcall = True
+        self.worker.stopcall.emit()
         self.start_button.setEnabled(True)
         self.scan_type.setEnabled(True)
         self.stop_button.setEnabled(False)
-        self.pause_button.setEnabled(False)
-        if self.scanNum == 29 or self.scanNum == 30 or self.scanNum == 37:
-            self.Gal.stop_scanxy()
-        else:
-            self.Gal.counter.stop()
-            self.Gal.reference.stop()
         
     def close_channels(self):
         self.Gal.close_all_channels()
@@ -1613,7 +1742,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
 def main():
     app = QtWidgets.QApplication(sys.argv)
     gui = SHGscan()
-    #gui.show()
+    gui.show()
     #main.connect_instrument()
     sys.exit(app.exec_())
 

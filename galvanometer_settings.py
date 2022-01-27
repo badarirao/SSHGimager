@@ -4,17 +4,8 @@ Created on Fri Feb 19 16:12:32 2021
 
 @author: Badari
 """
-from galvanometer import Galvano
-from nidaqmx import Task, stream_readers, stream_writers
-from nidaqmx.constants import AcquisitionType, Edge, CountDirection, Level
-from nidaqmx.constants import WAIT_INFINITELY, READ_ALL_AVAILABLE
-from nidaqmx.errors import DaqError
-from nidaqmx.error_codes import DAQmxErrors
-from numpy import linspace, ones, zeros, shape, random, uint32, diff, append
-from time import sleep
 import os, sys
-from PyQt5 import QtWidgets, QtCore, QtGui 
-import pyqtgraph as pg
+from PyQt5 import QtWidgets 
 from galset_gui import Ui_galvanoForm
 
 xscale = 1.0
@@ -67,7 +58,6 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         super(galsetting,self).__init__(*args,**kwargs)
         with open('address.txt','r') as f:
             self.setting_address = f.readline().rstrip()
-            self.data_address = f.readline().rstrip()
         self.filename = "SHG_default_Settings.txt"
         self.load_parameters_from_file()
         self.changed = False
@@ -84,49 +74,132 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
            item('Y-axis max       :', self.ymax, suffix= 'μm',readonly=True),
            item('Y-axis min        :', self.ymin, suffix = 'μm',readonly=True)]
         self.galset_setupUi(self,self.grp)
-        #self.p.child('X-axis max       :').setStepType(QAbstractSpinBox.AdaptiveDecimalStepType) 
         self.setWindowTitle("Galvanometer Settings")
         self.cancelButton.clicked.connect(self.cancel_galsetting)
         self.okayButton.clicked.connect(self.okay_galsetting)
+        self.defaultButton.clicked.connect(self.goDefault)
+        self.setdefaultButton.clicked.connect(self.setAsDefault)
         self.treeWidget.paramSet.sigTreeStateChanged.connect(self.galsetchange)
         
+    def setAsDefault(self):
+        self.xscale = self.p.child('X-axis Scale     :').value()
+        self.yscale = self.p.child('Y-axis Scale     :').value()
+        self.xvmax = self.p.child('X-axis V max   :').value()
+        self.xvmin = self.p.child('X-axis V min    :').value()
+        self.yvmax = self.p.child('Y-axis V max   :').value()
+        self.yvmin = self.p.child('Y-axis V min    :').value()
+        self.xmax = self.p.child('X-axis max       :').value()
+        self.xmin = self.p.child('X-axis min       :').value()
+        self.ymax = self.p.child('Y-axis max       :').value()
+        self.ymin = self.p.child('Y-axis min        :').value()
+        self.xpos = self.p.child('Set x-axis position:').value()
+        self.ypos = self.p.child('Set y-axis position:').value()
+        self.p.child('X-axis Scale     :').setDefault(self.xscale)
+        self.p.child('Y-axis Scale     :').setDefault(self.yscale)
+        self.p.child('X-axis V max   :').setDefault(self.xvmax)
+        self.p.child('X-axis V min    :').setDefault(self.xvmin)
+        self.p.child('Y-axis V max   :').setDefault(self.yvmax)
+        self.p.child('Y-axis V min    :').setDefault(self.yvmin)
+        self.p.child('X-axis max       :').setDefault(self.xmax)
+        self.p.child('X-axis min       :').setDefault(self.xmin)
+        self.p.child('Y-axis max       :').setDefault(self.ymax)
+        self.p.child('Y-axis min        :').setDefault(self.ymin)
+        self.p.child('Set x-axis position:').setDefault(self.xpos)
+        self.p.child('Set y-axis position:').setDefault(self.ypos)
+        params = {}
+        params['x_scale'] = self.xscale
+        params['y_scale'] = self.yscale
+        params['x_vmax'] = self.xvmax
+        params['x_vmin'] = self.xvmin
+        params['y_vmax'] = self.yvmax
+        params['y_vmin'] = self.yvmin
+        params['x_pos'] = self.xpos
+        params['y_pos'] = self.ypos
+        pth = os.getcwd()
+        os.chdir(self.setting_address)
+        with open(self.filename,'r') as f:
+            lines = f.readlines()
+        lines.reverse()
+        for i,line in enumerate(lines):
+            if line == "DS102 Settings\n":
+                lines = lines[:i+1]
+                break
+        lines.append('\n')
+        lines.append('End of Galvanometer settings.\n')
+        for key, value in reversed(params.items()):
+            lines.append('{0} = {1}\n'.format(key,value))
+        lines.append("Galvanometer Settings\n")
+        lines.reverse()
+        with open(self.filename,'w') as f:
+            f.writelines(lines)
+        os.chdir(pth)
+        
+    def goDefault(self):
+        print('Hello')
+        self.p.child('X-axis Scale     :').setToDefault()
+        self.p.child('Y-axis Scale     :').setToDefault()
+        self.p.child('X-axis V max   :').setToDefault()
+        self.p.child('X-axis V min    :').setToDefault()
+        self.p.child('Y-axis V max   :').setToDefault()
+        self.p.child('Y-axis V min    :').setToDefault()
+        self.p.child('X-axis max       :').setToDefault()
+        self.p.child('X-axis min       :').setToDefault()
+        self.p.child('Y-axis max       :').setToDefault()
+        self.p.child('Y-axis min        :').setToDefault()
+        self.p.child('Set x-axis position:').setToDefault()
+        self.p.child('Set y-axis position:').setToDefault()
         
     def load_parameters_from_file(self):
+        pth = os.getcwd()
+        params = {}
         if os.path.isdir(self.setting_address):
             os.chdir(self.setting_address)
-        if os.path.isfile(self.filename):
-            params = {}
-            with open(self.filename,'r') as file:
-                lines = file.readlines()
-                glines = lines[1:9]
-                for line in glines:
-                    lp = line.split()
-                    params[lp[0]] = float(lp[2])
-                self.xscale = params['x_scale']
-                self.yscale = params['y_scale']
-                self.xvmax = params['x_vmax']
-                self.xvmin = params['x_vmin']
-                self.yvmax = params['y_vmax']
-                self.yvmin = params['y_vmin']
-                self.xmax = self.xvmax/self.xscale
-                self.xmin = self.xvmin/self.xscale
-                self.ymax = self.yvmax/self.xscale
-                self.ymin = self.yvmin/self.xscale
-                self.xpos = params['x_pos']
-                self.ypos = params['y_pos']
-        else:
-            self.xscale = 1.0
-            self.yscale = 1.0
-            self.xvmax = 3.0
-            self.xvmin = -3.0
-            self.yvmax = 3.0
-            self.yvmin = -3.0
-            self.xmax = 3.0
-            self.xmin = -3.0
-            self.ymax = 3.0
-            self.ymin = -3.0
-            self.xpos = 0.0
-            self.ypos = 0.0
+            if os.path.isfile(self.filename):
+                with open(self.filename,'r') as file:
+                    lines = file.readlines()
+                    glines = lines[1:9]
+                    for line in glines:
+                        lp = line.split()
+                        params[lp[0]] = float(lp[2])
+                    self.xscale = params['x_scale']
+                    self.yscale = params['y_scale']
+                    self.xvmax = params['x_vmax']
+                    self.xvmin = params['x_vmin']
+                    self.yvmax = params['y_vmax']
+                    self.yvmin = params['y_vmin']
+                    self.xmax = self.xvmax/self.xscale
+                    self.xmin = self.xvmin/self.xscale
+                    self.ymax = self.yvmax/self.xscale
+                    self.ymin = self.yvmin/self.xscale
+                    self.xpos = params['x_pos']
+                    self.ypos = params['y_pos']
+            else:
+                self.xscale = 1.0
+                self.yscale = 1.0
+                self.xvmax = 3.0
+                self.xvmin = -3.0
+                self.yvmax = 3.0
+                self.yvmin = -3.0
+                self.xmax = 3.0
+                self.xmin = -3.0
+                self.ymax = 3.0
+                self.ymin = -3.0
+                self.xpos = 0.0
+                self.ypos = 0.0
+                params['x_scale'] = self.xscale
+                params['y_scale'] = self.yscale
+                params['x_vmax'] = self.xvmax
+                params['x_vmin'] = self.xvmin
+                params['y_vmax'] = self.yvmax
+                params['y_vmin'] = self.yvmin
+                params['x_pos'] = self.xpos
+                params['y_pos'] = self.ypos
+                with open(self.filename,'w') as f:
+                    f.write('Galvanometer Settings\n')
+                    for key, value in reversed(params.items()):
+                        f.write('{0} = {1}\n'.format(key,value))
+                    f.write("End of Galvanometer settings.")
+            os.chdir(pth)
             
     def galsetchange(self,param,changes):
         for par, change, data in changes:

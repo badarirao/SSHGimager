@@ -6,10 +6,8 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from pyqtgraph.parametertree import Parameter, ParameterTree
-
-
 
 class Ui_galvanoForm(object):
     def galset_setupUi(self, Form,grp):
@@ -21,10 +19,10 @@ class Ui_galvanoForm(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.defaultButton = QtWidgets.QPushButton(Form)
+        self.defaultButton = QtWidgets.QPushButton(Form,autoDefault=False)
         self.defaultButton.setObjectName("defaultButton")
         self.horizontalLayout.addWidget(self.defaultButton)
-        self.setdefaultButton = QtWidgets.QPushButton(Form)
+        self.setdefaultButton = QtWidgets.QPushButton(Form,autoDefault=False)
         self.setdefaultButton.setObjectName("setdefaultButton")
         self.horizontalLayout.addWidget(self.setdefaultButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
@@ -36,10 +34,10 @@ class Ui_galvanoForm(object):
         self.verticalLayout.addWidget(self.treeWidget)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.okayButton = QtWidgets.QPushButton(Form)
+        self.okayButton = QtWidgets.QPushButton(Form,autoDefault=False)
         self.okayButton.setObjectName("okayButton")
         self.horizontalLayout_2.addWidget(self.okayButton)
-        self.cancelButton = QtWidgets.QPushButton(Form)
+        self.cancelButton = QtWidgets.QPushButton(Form,autoDefault=False)
         self.cancelButton.setObjectName("cancelButton")
         self.horizontalLayout_2.addWidget(self.cancelButton)
         self.verticalLayout.addLayout(self.horizontalLayout_2)

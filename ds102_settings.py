@@ -5,20 +5,12 @@ Created on Fri Feb 19 16:12:32 2021
 @author: Badari
 
 TO DO:
+    #TODO update mechanical limits, since x and z stage signs were changed
     
     Make sure the current speed and home position settings are within the given max, min limits
 """
-from galvanometer import Galvano
-from nidaqmx import Task, stream_readers, stream_writers
-from nidaqmx.constants import AcquisitionType, Edge, CountDirection, Level
-from nidaqmx.constants import WAIT_INFINITELY, READ_ALL_AVAILABLE
-from nidaqmx.errors import DaqError
-from nidaqmx.error_codes import DAQmxErrors
-from numpy import linspace, ones, zeros, shape, random, uint32, diff, append
-from time import sleep
 import os, sys
-from PyQt5 import QtWidgets, QtCore, QtGui
-import pyqtgraph as pg
+from PyQt5 import QtWidgets
 from ds102_gui import Ui_ds102Form
 
 class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
@@ -61,42 +53,149 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         self.ds102_setupUi(self,self.grp)
         self.setWindowTitle("Sample Stage Settings")
         self.cancelButton.clicked.connect(self.cancel_ds102setting)
+        self.defaultButton.clicked.connect(self.goDefault)
+        self.setdefaultButton.clicked.connect(self.setAsDefault)
         self.okayButton.clicked.connect(self.okay_ds102setting)
         
+    def setAsDefault(self):
+        self.xscale = self.p.child('X-axis settings').child('Scale').value()
+        self.yscale = self.p.child('Y-axis settings').child('Scale').value()
+        self.zscale = self.p.child('Z-axis settings').child('Scale').value()
+        self.xmax = self.p.child('X-axis settings').child('Max (μm)').value()
+        self.xmin = self.p.child('X-axis settings').child('Min (μm)').value()
+        self.ymax = self.p.child('Y-axis settings').child('Max (μm)').value()
+        self.ymin = self.p.child('Y-axis settings').child('Min (μm)').value()
+        self.zmax = self.p.child('Z-axis settings').child('Max (μm)').value()
+        self.zmin = self.p.child('Z-axis settings').child('Min (μm)').value()
+        self.xspeed = self.p.child('X-axis settings').child('Current speed (pps)').value()
+        self.xscanspeed = self.p.child('X-axis settings').child('Scanning speed (pps)').value()
+        self.yspeed = self.p.child('Y-axis settings').child('Current speed (pps)').value()
+        self.yscanspeed = self.p.child('Y-axis settings').child('Scanning speed (pps)').value()
+        self.zspeed = self.p.child('Z-axis settings').child('Current speed (pps)').value()
+        self.zscanspeed = self.p.child('Z-axis settings').child('Scanning speed (pps)').value()
+        self.xhome = self.p.child('X-axis settings').child('Home Position').value()
+        self.yhome = self.p.child('Y-axis settings').child('Home Position').value()
+        self.zhome = self.p.child('Z-axis settings').child('Home Position').value()
+        self.com = self.p.child('Other settings and device information').child('Address').value()
+        self.p.child('X-axis settings').child('Scale').setDefault(self.xscale)
+        self.p.child('Y-axis settings').child('Scale').setDefault(self.yscale)
+        self.p.child('Z-axis settings').child('Scale').setDefault(self.zscale)
+        self.p.child('X-axis settings').child('Max (μm)').setDefault(self.xmax)
+        self.p.child('X-axis settings').child('Min (μm)').setDefault(self.xmin)
+        self.p.child('Y-axis settings').child('Max (μm)').setDefault(self.ymax)
+        self.p.child('Y-axis settings').child('Min (μm)').setDefault(self.ymin)
+        self.p.child('Z-axis settings').child('Max (μm)').setDefault(self.zmax)
+        self.p.child('Z-axis settings').child('Min (μm)').setDefault(self.zmin)
+        self.p.child('X-axis settings').child('Current speed (pps)').setDefault(self.xspeed)
+        self.p.child('X-axis settings').child('Scanning speed (pps)').setDefault(self.xscanspeed)
+        self.p.child('Y-axis settings').child('Current speed (pps)').setDefault(self.yspeed)
+        self.p.child('Y-axis settings').child('Scanning speed (pps)').setDefault(self.yscanspeed)
+        self.p.child('Z-axis settings').child('Current speed (pps)').setDefault(self.zspeed)
+        self.p.child('Z-axis settings').child('Scanning speed (pps)').setDefault(self.zscanspeed)
+        self.p.child('X-axis settings').child('Home Position').setDefault(self.xhome)
+        self.p.child('Y-axis settings').child('Home Position').setDefault(self.yhome)
+        self.p.child('Z-axis settings').child('Home Position').setDefault(self.zhome)
+        self.p.child('Other settings and device information').child('Address').setDefault(self.com)
+        params = {}
+        params['xscale'] = self.xscale
+        params['yscale'] = self.yscale
+        params['zscale'] = self.zscale
+        params['xmax'] = self.xmax
+        params['xmin'] = self.xmin
+        params['ymax'] = self.ymax
+        params['ymin'] = self.ymin
+        params['zmax'] = self.zmax
+        params['zmin'] = self.zmin
+        params['xspeed'] = self.xspeed
+        params['xscanspeed'] = self.xscanspeed
+        params['yspeed'] = self.yspeed
+        params['yscanspeed'] = self.yscanspeed
+        params['zspeed'] = self.zspeed
+        params['zscanspeed'] = self.zscanspeed
+        params['xhome'] = self.xhome
+        params['yhome'] = self.yhome
+        params['zhome'] = self.zhome
+        params['address'] = self.com
+        
+        pth = os.getcwd()
+        os.chdir(self.setting_address)
+        with open(self.filename,'r') as f:
+            lines = f.readlines()
+        for i,line in enumerate(lines):
+            if line == "End of Galvanometer settings.\n":
+                lines = lines[:i+1]
+                break
+        lines.append('\n')
+        lines.append('DS102 Settings\n')
+        for key, value in params.items():
+            lines.append('{0} = {1}\n'.format(key,value))
+        lines.append("End of DS102 settings.")
+        with open(self.filename,'w') as f:
+            f.writelines(lines)
+        os.chdir(pth)
+        
+    def goDefault(self):
+        self.p.child('X-axis settings').child('Scale').setToDefault()
+        self.p.child('Y-axis settings').child('Scale').setToDefault()
+        self.p.child('Z-axis settings').child('Scale').setToDefault()
+        self.p.child('X-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('X-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('Y-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('Y-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('Z-axis settings').child('Max (μm)').setToDefault()
+        self.p.child('Z-axis settings').child('Min (μm)').setToDefault()
+        self.p.child('X-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('X-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('Y-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('Y-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('Z-axis settings').child('Current speed (pps)').setToDefault()
+        self.p.child('Z-axis settings').child('Scanning speed (pps)').setToDefault()
+        self.p.child('X-axis settings').child('Home Position').setToDefault()
+        self.p.child('Y-axis settings').child('Home Position').setToDefault()
+        self.p.child('Z-axis settings').child('Home Position').setToDefault()
+        self.p.child('Other settings and device information').child('Address').setToDefault()
+    
     def load_parameters_from_file(self):
+        pth = os.getcwd()
         if os.path.isdir(self.setting_address):
             os.chdir(self.setting_address)
+        params = {}
+        params_present = True
         if os.path.isfile(self.filename):
-            params = {}
             with open(self.filename,'r') as file:
                 lines = file.readlines()
-                slines = lines[11:30]
-                for line in slines:
-                    lp = line.split()
-                    if lp[0] == 'address':
-                        params[lp[0]] = lp[2]
-                    else:
-                        params[lp[0]] = int(lp[2])
-                self.xscale = params['xscale']
-                self.yscale = params['yscale']
-                self.zscale = params['zscale']
-                self.xmax = params['xmax']
-                self.xmin = params['xmin']
-                self.ymax = params['ymax']
-                self.ymin = params['ymin']
-                self.zmax = params['zmax']
-                self.zmin = params['zmin']
-                self.xspeed = params['xspeed']
-                self.xscanspeed = params['xscanspeed']
-                self.yspeed = params['yspeed']
-                self.yscanspeed = params['yscanspeed']
-                self.zspeed = params['zspeed']
-                self.zscanspeed = params['zscanspeed']
-                self.xhome = params['xhome']
-                self.yhome = params['yhome']
-                self.zhome = params['zhome']
-                self.com = params['address']
+                if len(lines) >= 32:
+                    slines = lines[12:31]
+                    for line in slines:
+                        lp = line.split()
+                        if lp[0] == 'address':
+                            params[lp[0]] = lp[2]
+                        else:
+                            params[lp[0]] = int(lp[2])
+                    self.xscale = params['xscale']
+                    self.yscale = params['yscale']
+                    self.zscale = params['zscale']
+                    self.xmax = params['xmax']
+                    self.xmin = params['xmin']
+                    self.ymax = params['ymax']
+                    self.ymin = params['ymin']
+                    self.zmax = params['zmax']
+                    self.zmin = params['zmin']
+                    self.xspeed = params['xspeed']
+                    self.xscanspeed = params['xscanspeed']
+                    self.yspeed = params['yspeed']
+                    self.yscanspeed = params['yscanspeed']
+                    self.zspeed = params['zspeed']
+                    self.zscanspeed = params['zscanspeed']
+                    self.xhome = params['xhome']
+                    self.yhome = params['yhome']
+                    self.zhome = params['zhome']
+                    self.com = params['address']
+                else:
+                    params_present = False
         else:
+            params_present = False
+        if not params_present:
             self.xscale = 1
             self.yscale = 1
             self.zscale = 1
@@ -116,8 +215,39 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             self.yhome = 0
             self.zhome = 0
             self.com = 'com8'
-        if os.path.isdir(self.data_address):
-            os.chdir(self.data_address)
+            params['xscale'] = self.xscale
+            params['yscale'] = self.yscale
+            params['zscale'] = self.zscale
+            params['xmax'] = self.xmax
+            params['xmin'] = self.xmin
+            params['ymax'] = self.ymax
+            params['ymin'] = self.ymin
+            params['zmax'] = self.zmax
+            params['zmin'] = self.zmin
+            params['xspeed'] = self.xspeed
+            params['xscanspeed'] = self.xscanspeed
+            params['yspeed'] = self.yspeed
+            params['yscanspeed'] = self.yscanspeed
+            params['zspeed'] = self.zspeed
+            params['zscanspeed'] = self.zscanspeed
+            params['xhome'] = self.xhome
+            params['yhome'] = self.yhome
+            params['zhome'] = self.zhome
+            params['address'] = self.com
+            with open(self.filename,'r') as f:
+                lines = f.readlines()
+            for i,line in enumerate(lines):
+                if line == "End of Galvanometer settings.":
+                    lines = lines[:i+1]
+                    break
+            lines.append('\n\n')
+            lines.append('DS102 Settings\n')
+            for key, value in params.items():
+                lines.append('{0} = {1}\n'.format(key,value))
+            lines.append("End of DS102 settings.")
+            with open(self.filename,'w') as f:
+                f.writelines(lines)
+        os.chdir(pth)
             
     def okay_ds102setting(self):
         self.xscale = self.p.child('X-axis settings').child('Scale').value()
