@@ -9,8 +9,10 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from nidaqmx import Task
 from nidaqmx.constants import Edge, CountDirection, TerminalConfiguration
-import sys, os
-from numpy import array,savetxt,column_stack
+import sys
+import os
+from numpy import array, savetxt, column_stack
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -137,20 +139,28 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.label.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Time Step (s)</span></p></body></html>"))
-        self.label_2.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Intensity </span></p><p align=\"center\"><span style=\" font-size:8pt;\">(counts per time step)</span></p></body></html>"))
-        self.label_4.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Intensity (cps)</span></p></body></html>"))
-        self.label_3.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Ref. Intensity (μV)</span></p></body></html>"))
-        self.intensity.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
-        self.intensity_cps.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
-        self.intensity_2.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
+        self.label.setText(_translate(
+            "MainWindow", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Time Step (s)</span></p></body></html>"))
+        self.label_2.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Intensity </span></p><p align=\"center\"><span style=\" font-size:8pt;\">(counts per time step)</span></p></body></html>"))
+        self.label_4.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Intensity (cps)</span></p></body></html>"))
+        self.label_3.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Ref. Intensity (μV)</span></p></body></html>"))
+        self.intensity.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
+        self.intensity_cps.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
+        self.intensity_2.setText(_translate(
+            "MainWindow", "<html><head/><body><p align=\"center\">N/A</p></body></html>"))
         self.startbtn.setText(_translate("MainWindow", "Start"))
         self.stopbtn.setText(_translate("MainWindow", "Stop"))
         self.exitbtn.setText(_translate("MainWindow", "Exit"))
 
+
 class ctrview(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self,*args, obj=None, **kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self, *args, obj=None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.setupUi(self)
         self.update_tstep()
         self.tstep.setKeyboardTracking(False)
@@ -164,16 +174,18 @@ class ctrview(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tdata = [0]
         self.rdata = [0]
         self.counter = Task()
-        self.counter.ci_channels.add_ci_count_edges_chan('Dev1/ctr0',initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
+        self.counter.ci_channels.add_ci_count_edges_chan(
+            'Dev1/ctr0', initial_count=0, edge=Edge.RISING, count_direction=CountDirection.COUNT_UP)
         self.counter.channels.ci_count_edges_term = '/Dev1/PFI0'
         self.reference = Task()
-        self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
+        self.reference.ai_channels.add_ai_voltage_chan(
+            'Dev1/ai0', terminal_config=TerminalConfiguration.RSE, min_val=0, max_val=2)
         self.reference.channels.ai_rng_high = 0.2
         self.reference.channels.ai_rng_low = -0.2
-            
+
     def update_tstep(self):
         self.ts = self.tstep.value()
-    
+
     def show_data(self):
         self.tstep.setEnabled(False)
         self.ctr = 0
@@ -189,7 +201,7 @@ class ctrview(QtWidgets.QMainWindow, Ui_MainWindow):
         self.timecount.start()
         self.counter.start()
         self.reference.start()
-        
+
     def update_ctr_data(self):
         self.ctr = self.counter.read()
         self.ref = self.reference.read()
@@ -204,7 +216,7 @@ class ctrview(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rdata.append(self.ref)
         self.counter.start()
         self.reference.start()
-        
+
     def stop_ctr(self):
         self.timer.stop()
         self.counter.stop()
@@ -214,29 +226,31 @@ class ctrview(QtWidgets.QMainWindow, Ui_MainWindow):
         self.cdata = array(self.cdata)
         self.tdata = array(self.tdata)
         self.rdata = array(self.rdata)
-        whole_data = column_stack((self.tdata,self.cdata,self.rdata))
+        whole_data = column_stack((self.tdata, self.cdata, self.rdata))
         self.cdata = [0]
         self.tdata = [0]
         self.rdata = [0]
-        savetxt(filename,whole_data,delimiter='\t')
-    
+        savetxt(filename, whole_data, delimiter='\t')
+
     def exitprog(self):
         self.counter.close()
         self.reference.close()
         QtWidgets.qApp.quit()
-    
+
     def closeEvent(self, event):
         self.counter.close()
         self.reference.close()
         QtWidgets.qApp.quit()
-        
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    os.chdir(os.path.join(os.path.expandvars("%userprofile%"),"Desktop"))
+    os.chdir(os.path.join(os.path.expandvars("%userprofile%"), "Desktop"))
     gui = ctrview()
     gui.show()
-    #main.connect_instrument()
+    # main.connect_instrument()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()

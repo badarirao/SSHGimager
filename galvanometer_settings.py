@@ -4,8 +4,9 @@ Created on Fri Feb 19 16:12:32 2021
 
 @author: Badari
 """
-import os, sys
-from PyQt5 import QtWidgets 
+import os
+import sys
+from PyQt5 import QtWidgets
 from galset_gui import Ui_galvanoForm
 
 xscale = 1.0
@@ -18,6 +19,7 @@ xmax = 3.0
 xmin = -3.0
 ymax = 3.0
 ymin = -3.0
+
 
 def item(name, value='', values=None, **kwargs):
     """Add an item to a parameter tree.
@@ -53,34 +55,45 @@ def item(name, value='', values=None, **kwargs):
             kwargs['type'] = 'str'
     return dict(name=name, value=value, values=values, **kwargs)
 
+
 class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
-    def __init__(self,*args, obj=None, **kwargs):
-        super(galsetting,self).__init__(*args,**kwargs)
-        with open('address.txt','r') as f:
+    def __init__(self, *args, obj=None, **kwargs):
+        super(galsetting, self).__init__(*args, **kwargs)
+        with open('address.txt', 'r') as f:
             self.setting_address = f.readline().rstrip()
         self.filename = "SHG_default_Settings.txt"
         self.load_parameters_from_file()
         self.changed = False
-        self.grp = [item('X-axis Scale     :', self.xscale, suffix='V = 1 μm',limits=(0.00000001,100000000), siPrefix=True),
-           item('X-axis V max   :', self.xvmax, suffix= 'V',limits=(-10,10)),
-           item('X-axis V min    :', self.xvmin, suffix = 'V',limits=(-10,10)),
-           item('Set x-axis position:', self.xpos, suffix = 'V',siPrefix=True),#
-           item('X-axis max       :', self.xmax, suffix= 'μm',readonly=True), #
-           item('X-axis min       :', self.xmin, suffix = 'μm',readonly=True),#
-           item('Y-axis Scale     :', self.yscale, suffix='V = 1 μm', limits=(0.00000001,100000000), siPrefix=True),
-           item('Y-axis V max   :', self.yvmax, suffix= 'V',limits=(-10,10)),#
-           item('Y-axis V min    :', self.yvmin, suffix = 'V',limits=(-10,10)),#
-           item('Set y-axis position:', self.ypos, suffix = 'V',siPrefix=True),#
-           item('Y-axis max       :', self.ymax, suffix= 'μm',readonly=True),
-           item('Y-axis min        :', self.ymin, suffix = 'μm',readonly=True)]
-        self.galset_setupUi(self,self.grp)
+        self.grp = [item('X-axis Scale     :', self.xscale, suffix='V = 1 μm', limits=(0.00000001, 100000000), siPrefix=True),
+                    item('X-axis V max   :', self.xvmax,
+                         suffix='V', limits=(-10, 10)),
+                    item('X-axis V min    :', self.xvmin,
+                         suffix='V', limits=(-10, 10)),
+                    item('Set x-axis position:', self.xpos,
+                         suffix='V', siPrefix=True),
+                    item('X-axis max       :', self.xmax,
+                         suffix='μm', readonly=True),
+                    item('X-axis min       :', self.xmin,
+                         suffix='μm', readonly=True),
+                    item('Y-axis Scale     :', self.yscale, suffix='V = 1 μm',
+                         limits=(0.00000001, 100000000), siPrefix=True),
+                    item('Y-axis V max   :', self.yvmax,
+                         suffix='V', limits=(-10, 10)),
+                    item('Y-axis V min    :', self.yvmin,
+                         suffix='V', limits=(-10, 10)),
+                    item('Set y-axis position:', self.ypos,
+                         suffix='V', siPrefix=True),
+                    item('Y-axis max       :', self.ymax,
+                         suffix='μm', readonly=True),
+                    item('Y-axis min        :', self.ymin, suffix='μm', readonly=True)]
+        self.galset_setupUi(self, self.grp)
         self.setWindowTitle("Galvanometer Settings")
         self.cancelButton.clicked.connect(self.cancel_galsetting)
         self.okayButton.clicked.connect(self.okay_galsetting)
         self.defaultButton.clicked.connect(self.goDefault)
         self.setdefaultButton.clicked.connect(self.setAsDefault)
         self.treeWidget.paramSet.sigTreeStateChanged.connect(self.galsetchange)
-        
+
     def setAsDefault(self):
         self.xscale = self.p.child('X-axis Scale     :').value()
         self.yscale = self.p.child('Y-axis Scale     :').value()
@@ -117,23 +130,23 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         params['y_pos'] = self.ypos
         pth = os.getcwd()
         os.chdir(self.setting_address)
-        with open(self.filename,'r') as f:
+        with open(self.filename, 'r') as f:
             lines = f.readlines()
         lines.reverse()
-        for i,line in enumerate(lines):
+        for i, line in enumerate(lines):
             if line == "DS102 Settings\n":
                 lines = lines[:i+1]
                 break
         lines.append('\n')
         lines.append('End of Galvanometer settings.\n')
         for key, value in reversed(params.items()):
-            lines.append('{0} = {1}\n'.format(key,value))
+            lines.append('{0} = {1}\n'.format(key, value))
         lines.append("Galvanometer Settings\n")
         lines.reverse()
-        with open(self.filename,'w') as f:
+        with open(self.filename, 'w') as f:
             f.writelines(lines)
         os.chdir(pth)
-        
+
     def goDefault(self):
         print('Hello')
         self.p.child('X-axis Scale     :').setToDefault()
@@ -148,14 +161,14 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         self.p.child('Y-axis min        :').setToDefault()
         self.p.child('Set x-axis position:').setToDefault()
         self.p.child('Set y-axis position:').setToDefault()
-        
+
     def load_parameters_from_file(self):
         pth = os.getcwd()
         params = {}
         if os.path.isdir(self.setting_address):
             os.chdir(self.setting_address)
             if os.path.isfile(self.filename):
-                with open(self.filename,'r') as file:
+                with open(self.filename, 'r') as file:
                     lines = file.readlines()
                     glines = lines[1:9]
                     for line in glines:
@@ -194,30 +207,38 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
                 params['y_vmin'] = self.yvmin
                 params['x_pos'] = self.xpos
                 params['y_pos'] = self.ypos
-                with open(self.filename,'w') as f:
+                with open(self.filename, 'w') as f:
                     f.write('Galvanometer Settings\n')
                     for key, value in reversed(params.items()):
-                        f.write('{0} = {1}\n'.format(key,value))
+                        f.write('{0} = {1}\n'.format(key, value))
                     f.write("End of Galvanometer settings.")
             os.chdir(pth)
-            
-    def galsetchange(self,param,changes):
+
+    def galsetchange(self, param, changes):
         for par, change, data in changes:
             if par.name() == 'X-axis V max   :':
-                self.p.child('X-axis max       :').setValue(data/self.p.child('X-axis Scale     :').value())
+                self.p.child('X-axis max       :').setValue(data /
+                                                            self.p.child('X-axis Scale     :').value())
             elif par.name() == 'X-axis V min    :':
-                self.p.child('X-axis min       :').setValue(data/self.p.child('X-axis Scale     :').value())
+                self.p.child('X-axis min       :').setValue(data /
+                                                            self.p.child('X-axis Scale     :').value())
             elif par.name() == 'Y-axis V max   :':
-                self.p.child('Y-axis max       :').setValue(data/self.p.child('Y-axis Scale     :').value())
+                self.p.child('Y-axis max       :').setValue(data /
+                                                            self.p.child('Y-axis Scale     :').value())
             elif par.name() == 'Y-axis V min    :':
-                self.p.child('Y-axis min        :').setValue(data/self.p.child('Y-axis Scale     :').value())
+                self.p.child('Y-axis min        :').setValue(data /
+                                                             self.p.child('Y-axis Scale     :').value())
             elif par.name() == 'X-axis Scale     :':
-                self.p.child('X-axis max       :').setValue(self.p.child('X-axis V max   :').value()/data)
-                self.p.child('X-axis min       :').setValue(self.p.child('X-axis V min    :').value()/data)
+                self.p.child(
+                    'X-axis max       :').setValue(self.p.child('X-axis V max   :').value()/data)
+                self.p.child(
+                    'X-axis min       :').setValue(self.p.child('X-axis V min    :').value()/data)
             elif par.name() == 'Y-axis Scale     :':
-                self.p.child('Y-axis max       :').setValue(self.p.child('Y-axis V max   :').value()/data)
-                self.p.child('Y-axis min        :').setValue(self.p.child('Y-axis V min    :').value()/data)
-                
+                self.p.child(
+                    'Y-axis max       :').setValue(self.p.child('Y-axis V max   :').value()/data)
+                self.p.child(
+                    'Y-axis min        :').setValue(self.p.child('Y-axis V min    :').value()/data)
+
     def okay_galsetting(self):
         self.xscale = self.p.child('X-axis Scale     :').value()
         self.yscale = self.p.child('Y-axis Scale     :').value()
@@ -233,7 +254,7 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         self.ypos = self.p.child('Set y-axis position:').value()
         self.changed = True
         self.accept()
-        
+
     def cancel_galsetting(self):
         self.changed = False
         self.p.child('X-axis Scale     :').setValue(self.xscale)
@@ -246,16 +267,18 @@ class galsetting(QtWidgets.QDialog, Ui_galvanoForm):
         self.p.child('X-axis min       :').setValue(self.xmin)
         self.p.child('Y-axis max       :').setValue(self.ymax)
         self.p.child('Y-axis min        :').setValue(self.ymin)
-        self.p.child('Set x-axis position:').setValue(self.xpos) 
+        self.p.child('Set x-axis position:').setValue(self.xpos)
         self.p.child('Set y-axis position:').setValue(self.ypos)
         self.close()
-    
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     main = galsetting()
     main.show()
-    #main.connect_instrument()
+    # main.connect_instrument()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()

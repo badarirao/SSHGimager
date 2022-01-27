@@ -21,67 +21,68 @@ from glob import glob
 # Need to optimize BUF so that image edges are not scarred
 BUF = 5
 
+
 class Select:
     X_Scan_Continuous_Galvano = 1
-    X_Scan_Step_Galvano = 2 #not used
-    X_Scan_Continuous_Stage = 3 #not used
+    X_Scan_Step_Galvano = 2  # not used
+    X_Scan_Continuous_Stage = 3  # not used
     X_Scan_Step_Stage = 4
-    
+
     Y_Scan_Continuous_Galvano = 5
-    Y_Scan_Step_Galvano = 6 #not used
-    Y_Scan_Continuous_Stage = 7 #not used
+    Y_Scan_Step_Galvano = 6  # not used
+    Y_Scan_Continuous_Stage = 7  # not used
     Y_Scan_Step_Stage = 8
-    
-    #Z_Scan_Continuous_Galvano = 9 # not available
-    #Z_Scan_Step_Galvano = 10 # not available
-    Z_Scan_Continuous_Stage = 11 #not used
-    Z_Scan_Step_Stage = 12 
-    
+
+    # Z_Scan_Continuous_Galvano = 9 # not available
+    # Z_Scan_Step_Galvano = 10 # not available
+    Z_Scan_Continuous_Stage = 11  # not used
+    Z_Scan_Step_Stage = 12
+
     YZ_Scan_Continuous_Galvano = 13
-    YZ_Scan_Step_Galvano = 14 #not used
-    YZ_Scan_Continuous_Stage = 15 #not used
+    YZ_Scan_Step_Galvano = 14  # not used
+    YZ_Scan_Continuous_Stage = 15  # not used
     YZ_Scan_Step_Stage = 16
-    
+
     ZY_Scan_Continuous_Galvano = 17
-    ZY_Scan_Step_Galvano = 18 #not used
-    ZY_Scan_Continuous_Stage = 19 #not used
+    ZY_Scan_Step_Galvano = 18  # not used
+    ZY_Scan_Continuous_Stage = 19  # not used
     ZY_Scan_Step_Stage = 20
-    
+
     XZ_Scan_Continuous_Galvano = 21
-    XZ_Scan_Step_Galvano = 22 #not used
-    XZ_Scan_Continuous_Stage = 23 #not used
+    XZ_Scan_Step_Galvano = 22  # not used
+    XZ_Scan_Continuous_Stage = 23  # not used
     XZ_Scan_Step_Stage = 24
-    
+
     ZX_Scan_Continuous_Galvano = 25
-    ZX_Scan_Step_Galvano = 26 #not used
-    ZX_Scan_Continuous_Stage = 27 #not used
+    ZX_Scan_Step_Galvano = 26  # not used
+    ZX_Scan_Continuous_Stage = 27  # not used
     ZX_Scan_Step_Stage = 28
-    
+
     XY_Scan_Continuous_Galvano = 29
-    XY_Scan_Step_Galvano = 30 #not used
-    XY_Scan_Continuous_Stage = 31 #not used
+    XY_Scan_Step_Galvano = 30  # not used
+    XY_Scan_Continuous_Stage = 31  # not used
     XY_Scan_Step_Stage = 32
-    
+
     YX_Scan_Continuous_Galvano = 33
-    YX_Scan_Step_Galvano = 34 #not used
-    YX_Scan_Continuous_Stage = 35 #not used
+    YX_Scan_Step_Galvano = 34  # not used
+    YX_Scan_Continuous_Stage = 35  # not used
     YX_Scan_Step_Stage = 36
-    
+
     # Z is always the last axis order
     XYZ_Scan_Continuous_Galvano = 37  # Z is stage scan
-    XYZ_Scan_Step_Galvano = 38 #not used
-    XYZ_Scan_Continuous_Stage = 39 #not used
+    XYZ_Scan_Step_Galvano = 38  # not used
+    XYZ_Scan_Continuous_Stage = 39  # not used
     XYZ_Scan_Step_Stage = 40
-    
+
     YXZ_Scan_Continuous_Galvano = 41  # Z is stage scan
-    YXZ_Scan_Step_Galvano = 42 #not used
-    YXZ_Scan_Continuous_Stage = 43 #not used
+    YXZ_Scan_Step_Galvano = 42  # not used
+    YXZ_Scan_Continuous_Stage = 43  # not used
     YXZ_Scan_Step_Stage = 44
-    
+
     # Special scan for reflection mode
     ZXY_Scan_Step_Stage = 45
     ZYX_Scan_Step_Stage = 46
-    
+
     def scanName(ID):
         if ID == 1:
             return 'X_Scan_Continuous_Galvano'
@@ -175,12 +176,13 @@ class Select:
             return 'ZXY_Scan_Step_Stage'
         elif ID == 46:
             return 'ZYX_Scan_Step_Stage'
-    
+
+
 class MonitorStage(QThread):
     def __init__(self, Stage, parent=None):
-        QThread.__init__(self,parent)
+        QThread.__init__(self, parent)
         self.Stage = Stage
-        
+
     def run(self):
         loop = QEventLoop()
         if self.Stage.ID == 'Fake':
@@ -190,22 +192,24 @@ class MonitorStage(QThread):
             while self.Stage.is_xmoving() or self.Stage.is_ymoving() or self.Stage.is_zmoving():
                 QTimer.singleShot(100, loop.quit)
                 loop.exec_()
-                
+
+
 class Dummy():
     def __init__(self):
         pass
-    
-    def __getattr__(self,name):  
+
+    def __getattr__(self, name):
         """If any undefined method is called, do nothing."""
         def method(*args):
             pass
         return method
-    
+
     def read(self):
         return 1
-    
+
     def moving(self):
         return 0
+
 
 class FakeDAQ():
     """Provides a fake adapter for debugging purposes.
@@ -269,29 +273,30 @@ class FakeDAQ():
         """Return the class name as a string."""
         return "<FakeAdapter>"
 
-    def __getattr__(self,name):  
+    def __getattr__(self, name):
         """If any undefined method is called, do nothing."""
         def method(*args):
             pass
         return method
-    
+
     def readCounts(self):
         sleep(0.01)
-        refV = random.uniform(0.015,0.02)*1000000
+        refV = random.uniform(0.015, 0.02)*1000000
         if refV < 1000:
             refV = 1
-        counts = random.randint(90000,100000)
-        return counts,refV
-    
-    def start_scanxy(self,xarr,yarr,retrace=2):
+        counts = random.randint(90000, 100000)
+        return counts, refV
+
+    def start_scanxy(self, xarr, yarr, retrace=2):
         self.startscan = True
         self.xarr = xarr
         self.yarr = yarr
         self.retrace = retrace
         self.i = 0
-        sample = self.getxyarray(self.xarr,self.yarr,retrace)
-        self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
-        self.sampleIndex = self.sampleIndex[:,1:].astype(int)
+        sample = self.getxyarray(self.xarr, self.yarr, retrace)
+        self.sampleIndex = self.getxyarray(
+            range(len(self.xarr)), range(len(self.yarr)), retrace)
+        self.sampleIndex = self.sampleIndex[:, 1:].astype(int)
         self.sam_pc = shape(sample)[1]
         if retrace != 0:
             self.shgData = zeros(self.sam_pc)
@@ -301,14 +306,14 @@ class FakeDAQ():
             self.refData = -ones(self.sam_pc)
             self.shgData2 = zeros(self.sam_pc)
             self.refData2 = -ones(self.sam_pc)
-    
+
     def update_scanxy(self):
         if self.startscan == False:
             return False
-        buf = random.randint(5,10)
-        buffer_shg = random.randint(90000,100000,buf)
+        buf = random.randint(5, 10)
+        buffer_shg = random.randint(90000, 100000, buf)
         number_of_SHG_samples = len(buffer_shg)
-        buffer_ref = 1000000*random.uniform(0.015,0.02,buf)
+        buffer_ref = 1000000*random.uniform(0.015, 0.02, buf)
         buffer_ref[buffer_ref < 1000] = 1  # to avoid divide by zero error
         if self.i + number_of_SHG_samples > self.sam_pc:
             number_of_SHG_samples = self.sam_pc - self.i
@@ -317,24 +322,24 @@ class FakeDAQ():
         self.shgData[self.i:self.i+number_of_SHG_samples] = buffer_shg
         self.refData[self.i:self.i+number_of_SHG_samples] = buffer_ref
         self.diff_data_shg = self.shgData[1:]
-        self.img_dataSHG = zeros((len(self.xarr),len(self.yarr)))
-        self.img_dataRef = -ones((len(self.xarr),len(self.yarr)))
+        self.img_dataSHG = zeros((len(self.xarr), len(self.yarr)))
+        self.img_dataRef = -ones((len(self.xarr), len(self.yarr)))
         if self.retrace == 0:
-            self.img_dataSHG2 = zeros((len(self.xarr),len(self.yarr)))
-            self.img_dataRef2 = -ones((len(self.xarr),len(self.yarr)))
+            self.img_dataSHG2 = zeros((len(self.xarr), len(self.yarr)))
+            self.img_dataRef2 = -ones((len(self.xarr), len(self.yarr)))
         for pos in range(self.sam_pc-1):
-            i = self.sampleIndex[0,pos]
-            j = self.sampleIndex[1,pos]
+            i = self.sampleIndex[0, pos]
+            j = self.sampleIndex[1, pos]
             if self.retrace != 0:
-                self.img_dataSHG[i,j] = self.diff_data_shg[pos]
-                self.img_dataRef[i,j] = self.refData[pos+1]
+                self.img_dataSHG[i, j] = self.diff_data_shg[pos]
+                self.img_dataRef[i, j] = self.refData[pos+1]
             else:
-                if self.img_dataSHG[i,j] == 0:
-                    self.img_dataSHG[i,j] = self.diff_data_shg[pos]
-                    self.img_dataRef[i,j] = self.refData[pos+1]
+                if self.img_dataSHG[i, j] == 0:
+                    self.img_dataSHG[i, j] = self.diff_data_shg[pos]
+                    self.img_dataRef[i, j] = self.refData[pos+1]
                 else:
-                    self.img_dataSHG2[i,j] = self.diff_data_shg[pos]
-                    self.img_dataRef2[i,j] = self.refData[pos+1]
+                    self.img_dataSHG2[i, j] = self.diff_data_shg[pos]
+                    self.img_dataRef2[i, j] = self.refData[pos+1]
         self.img_Processed = self.img_dataSHG/self.img_dataRef
         if self.retrace == 0:
             self.img_Processed2 = self.img_dataSHG2/self.img_dataRef2
@@ -342,8 +347,8 @@ class FakeDAQ():
         if self.i >= self.sam_pc:
             return False
         return True
-    
-    def getxyarray(self,xarr,yarr,retrace=2):
+
+    def getxyarray(self, xarr, yarr, retrace=2):
         if self.fast_dir == 'x':
             a1 = xarr
             a2 = yarr
@@ -354,40 +359,42 @@ class FakeDAQ():
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == -1: # scan each line only in opposite direction (only retrace)
+                a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        # scan each line only in opposite direction (only retrace)
+        elif retrace == -1:
             a1_arr = flip(a1)
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,flip(a1))
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == 0: # scan trace and retrace a line, then go to next line
-            a1 = append(a1,flip(a1))
+                a1_arr = append(a1_arr, flip(a1))
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        elif retrace == 0:  # scan trace and retrace a line, then go to next line
+            a1 = append(a1, flip(a1))
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1_arr))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == 2: # scan trace one line, retrace next line , and so on..
+                a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        elif retrace == 2:  # scan trace one line, retrace next line , and so on..
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             flp = 1
             for i in range(len(a2)-1):
                 flp = flp * -1
                 if flp == -1:
-                    a1_arr = append(a1_arr,flip(a1))
+                    a1_arr = append(a1_arr, flip(a1))
                 else:
-                    a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
+                    a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
         if self.fast_dir == 'x':
-            a1_arr = append(a1_arr[0],a1_arr)
-            a2_arr = append(a2_arr[0],a2_arr)
+            a1_arr = append(a1_arr[0], a1_arr)
+            a2_arr = append(a2_arr[0], a2_arr)
         else:
             temp = copy(a2_arr)
-            a2_arr = append(a1_arr[0],a1_arr)
-            a1_arr = append(temp[0],temp)
-        return append(a1_arr,a2_arr).reshape(2,len(a1_arr))
+            a2_arr = append(a1_arr[0], a1_arr)
+            a1_arr = append(temp[0], temp)
+        return append(a1_arr, a2_arr).reshape(2, len(a1_arr))
+
 
 class FakeDS102():
     """Provides a fake adapter for debugging purposes.
@@ -434,30 +441,31 @@ class FakeDS102():
         """Return the class name as a string."""
         return "<FakeAdapter>"
 
-    def __getattr__(self,name):  
+    def __getattr__(self, name):
         """If any undefined method is called, do nothing."""
         def method(*args):
             pass
         return method
-    
+
     def is_xmoving(self):
         return 0
-    
+
     def is_ymoving(self):
         return 0
-    
+
     def is_zmoving(self):
         return 0
-    
-    def set_xspeed(self,F=1):
+
+    def set_xspeed(self, F=1):
         pass
-    
-    def set_yspeed(self,F=1):
+
+    def set_yspeed(self, F=1):
         pass
-    
-    def set_zspeed(self,F=1):
+
+    def set_zspeed(self, F=1):
         pass
-    
+
+
 def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
                     dated_folder=False, index=True, datetimeformat="%Y-%m-%d"):
     """
@@ -478,7 +486,7 @@ def unique_filename(directory, prefix='DATA', suffix='', ext='csv',
         for file in glob(basepath+"*.*"):
             try:
                 ind = int(file.split(".")[-2].split("_")[-1])
-                if  ind > i:
+                if ind > i:
                     i = ind
             except:
                 break
@@ -514,11 +522,11 @@ def get_valid_filename(s):
     return sub(r'(?u)[^-\w.]', '', s)
 
 
-def checkInstrument(ds102Port = None, Fake = False):
+def checkInstrument(ds102Port=None, Fake=False):
     if Fake:
         gal = FakeDAQ()
         stage = FakeDS102()
-        return gal,stage
+        return gal, stage
     try:
         gal = Scan()
     except (DaqError, FileNotFoundError, AttributeError) as e:
@@ -533,9 +541,9 @@ def checkInstrument(ds102Port = None, Fake = False):
             try:
                 stage = DS102(port)
                 stageConnected = True
-            except (ValueError,SerialTimeoutException, SerialException):
+            except (ValueError, SerialTimeoutException, SerialException):
                 pass
         if stageConnected == False:
             stage = FakeDS102()
-        
-    return gal,stage
+
+    return gal, stage

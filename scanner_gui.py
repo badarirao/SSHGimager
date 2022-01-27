@@ -6,9 +6,10 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-#hello
+# hello
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pyqtgraph import ImageView, PlotItem, PlotWidget, ViewBox, mkPen
+
 
 class Ui_Scanner(object):
     def setupUi(self, Scanner):
@@ -47,7 +48,8 @@ class Ui_Scanner(object):
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Window, brush)
         self.sampleID.setPalette(palette)
         self.sampleID.setAutoFillBackground(True)
-        self.sampleID.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        self.sampleID.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.sampleID.setIndent(5)
         self.sampleID.setObjectName("sampleID")
         self.horizontalLayout_7.addWidget(self.sampleID)
@@ -101,10 +103,12 @@ class Ui_Scanner(object):
         self.commentLabel.setMaximumSize(QtCore.QSize(200, 200))
         self.horizontalLayout_12.addWidget(self.commentLabel)
         self.comments = QtWidgets.QTextEdit(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.comments.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.comments.sizePolicy().hasHeightForWidth())
         self.comments.setSizePolicy(sizePolicy)
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(226, 255, 213))
@@ -130,42 +134,52 @@ class Ui_Scanner(object):
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
-        self.liveplot1d = PlotWidget(self.centralwidget,viewBox=ViewBox(border = mkPen(color='w',width = 2)))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.liveplot1d = PlotWidget(
+            self.centralwidget, viewBox=ViewBox(border=mkPen(color='w', width=2)))
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.liveplot1d.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.liveplot1d.sizePolicy().hasHeightForWidth())
         self.liveplot1d.setSizePolicy(sizePolicy)
         self.liveplot1d.setMinimumSize(QtCore.QSize(537, 423))
         self.liveplot1d.setObjectName("liveplot1d")
         self.horizontalLayout_5.addWidget(self.liveplot1d)
         self.liveplot1d.hide()
-        img1 = PlotItem() #
-        self.liveplot = ImageView(self.centralwidget,view=img1) #
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        img1 = PlotItem()
+        self.liveplot = ImageView(self.centralwidget, view=img1)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.liveplot.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.liveplot.sizePolicy().hasHeightForWidth())
         self.liveplot.setSizePolicy(sizePolicy)
         self.liveplot.setMinimumSize(QtCore.QSize(537, 423))
         self.liveplot.setObjectName("liveplot")
         self.horizontalLayout_5.addWidget(self.liveplot)
-        self.ref_plot1d = PlotWidget(self.centralwidget,viewBox=ViewBox(border = mkPen(color='w',width = 2)))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        self.ref_plot1d = PlotWidget(
+            self.centralwidget, viewBox=ViewBox(border=mkPen(color='w', width=2)))
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.ref_plot1d.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.ref_plot1d.sizePolicy().hasHeightForWidth())
         self.ref_plot1d.setSizePolicy(sizePolicy)
         self.ref_plot1d.setMinimumSize(QtCore.QSize(537, 423))
         self.ref_plot1d.setObjectName("ref_plot1d")
         self.horizontalLayout_5.addWidget(self.ref_plot1d)
         self.ref_plot1d.hide()
-        img2 = PlotItem() #
-        self.ref_plot = ImageView(self.centralwidget,view=img2) #
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        img2 = PlotItem()
+        self.ref_plot = ImageView(self.centralwidget, view=img2)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.ref_plot.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.ref_plot.sizePolicy().hasHeightForWidth())
         self.ref_plot.setSizePolicy(sizePolicy)
         self.ref_plot.setMinimumSize(QtCore.QSize(536, 423))
         self.ref_plot.setObjectName("ref_plot")
@@ -174,22 +188,27 @@ class Ui_Scanner(object):
         self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
         self.loadImage_button = QtWidgets.QPushButton(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.loadImage_button.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.loadImage_button.sizePolicy().hasHeightForWidth())
         self.loadImage_button.setSizePolicy(sizePolicy)
         self.loadImage_button.setMinimumSize(QtCore.QSize(100, 28))
         self.loadImage_button.setObjectName("loadImage_button")
         self.horizontalLayout_8.addWidget(self.loadImage_button)
-        self.selectImage_Button = QtWidgets.QPushButton('Select Image from Collection',self.centralwidget)
+        self.selectImage_Button = QtWidgets.QPushButton(
+            'Select Image from Collection', self.centralwidget)
         self.selectImage_Button.setObjectName("selectImage_Button")
         self.horizontalLayout_8.addWidget(self.selectImage_Button)
         self.select_scan_area = QtWidgets.QPushButton(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.select_scan_area.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.select_scan_area.sizePolicy().hasHeightForWidth())
         self.select_scan_area.setSizePolicy(sizePolicy)
         self.select_scan_area.setMinimumSize(QtCore.QSize(107, 28))
         self.select_scan_area.setObjectName("select_scan_area")
@@ -256,7 +275,8 @@ class Ui_Scanner(object):
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(238, 255, 242))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Base, brush)
@@ -265,7 +285,8 @@ class Ui_Scanner(object):
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(238, 255, 242))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Base, brush)
@@ -274,7 +295,8 @@ class Ui_Scanner(object):
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(121, 121, 90))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Base, brush)
@@ -300,7 +322,8 @@ class Ui_Scanner(object):
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(238, 255, 242))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Base, brush)
@@ -309,7 +332,8 @@ class Ui_Scanner(object):
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(238, 255, 242))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Base, brush)
@@ -318,7 +342,8 @@ class Ui_Scanner(object):
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(121, 121, 90))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Base, brush)
@@ -377,7 +402,8 @@ class Ui_Scanner(object):
         self.horizontalLayout_10.setObjectName("horizontalLayout_10")
         self.label_stageMove = QtWidgets.QLabel(self.centralwidget)
         self.label_stageMove.setMinimumSize(QtCore.QSize(130, 0))
-        self.label_stageMove.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        self.label_stageMove.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.label_stageMove.setIndent(-1)
         self.label_stageMove.setObjectName("label_stageMove")
         self.horizontalLayout_10.addWidget(self.label_stageMove)
@@ -386,13 +412,16 @@ class Ui_Scanner(object):
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.ButtonText, brush)
         self.stageStop_Button.setPalette(palette)
         self.stageStop_Button.setObjectName("stageStop_Button")
         self.horizontalLayout_10.addWidget(self.stageStop_Button)
@@ -467,22 +496,27 @@ class Ui_Scanner(object):
         self.zactive.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.zactive.setText("")
         self.zactive.setObjectName("zactive")
-        self.horizontalLayout_4.addWidget(self.zactive, 0, QtCore.Qt.AlignRight|QtCore.Qt.AlignVCenter)
+        self.horizontalLayout_4.addWidget(
+            self.zactive, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.zaxis = QtWidgets.QLabel(self.centralwidget)
         self.zaxis.setMaximumSize(QtCore.QSize(50, 16777215))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         self.zaxis.setPalette(palette)
         self.zaxis.setObjectName("zaxis")
-        self.horizontalLayout_4.addWidget(self.zaxis, 0, QtCore.Qt.AlignHCenter)
+        self.horizontalLayout_4.addWidget(
+            self.zaxis, 0, QtCore.Qt.AlignHCenter)
         self.gridLayout_4.addLayout(self.horizontalLayout_4, 3, 0, 1, 1)
         self.zpos = QtWidgets.QDoubleSpinBox(self.centralwidget)
         self.zpos.setEnabled(False)
@@ -557,31 +591,37 @@ class Ui_Scanner(object):
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Text, brush)
         brush = QtGui.QBrush(QtGui.QColor(207, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Text, brush)
         brush = QtGui.QBrush(QtGui.QColor(207, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.ButtonText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Text, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.ButtonText, brush)
         self.stop_button.setPalette(palette)
         self.stop_button.setObjectName("stop_button")
         self.gridLayout_6.addWidget(self.stop_button, 0, 1, 1, 1)
@@ -745,22 +785,27 @@ class Ui_Scanner(object):
         self.xactive.setCheckable(True)
         self.xactive.setChecked(True)
         self.xactive.setObjectName("xactive")
-        self.horizontalLayout_2.addWidget(self.xactive, 0, QtCore.Qt.AlignRight|QtCore.Qt.AlignVCenter)
+        self.horizontalLayout_2.addWidget(
+            self.xactive, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.xaxis = QtWidgets.QLabel(self.centralwidget)
         self.xaxis.setMaximumSize(QtCore.QSize(50, 16777215))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         self.xaxis.setPalette(palette)
         self.xaxis.setObjectName("xaxis")
-        self.horizontalLayout_2.addWidget(self.xaxis, 0, QtCore.Qt.AlignHCenter)
+        self.horizontalLayout_2.addWidget(
+            self.xaxis, 0, QtCore.Qt.AlignHCenter)
         self.gridLayout_4.addLayout(self.horizontalLayout_2, 1, 0, 1, 1)
         self.xstep = QtWidgets.QDoubleSpinBox(self.centralwidget)
         self.xstep.setMaximumSize(QtCore.QSize(100, 16777215))
@@ -786,22 +831,27 @@ class Ui_Scanner(object):
         self.yactive.setText("")
         self.yactive.setChecked(True)
         self.yactive.setObjectName("yactive")
-        self.horizontalLayout_3.addWidget(self.yactive, 0, QtCore.Qt.AlignRight|QtCore.Qt.AlignVCenter)
+        self.horizontalLayout_3.addWidget(
+            self.yactive, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.yaxis = QtWidgets.QLabel(self.centralwidget)
         self.yaxis.setMaximumSize(QtCore.QSize(50, 16777215))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Active,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Inactive,
+                         QtGui.QPalette.WindowText, brush)
         brush = QtGui.QBrush(QtGui.QColor(120, 120, 120))
         brush.setStyle(QtCore.Qt.SolidPattern)
-        palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.WindowText, brush)
+        palette.setBrush(QtGui.QPalette.Disabled,
+                         QtGui.QPalette.WindowText, brush)
         self.yaxis.setPalette(palette)
         self.yaxis.setObjectName("yaxis")
-        self.horizontalLayout_3.addWidget(self.yaxis, 0, QtCore.Qt.AlignHCenter)
+        self.horizontalLayout_3.addWidget(
+            self.yaxis, 0, QtCore.Qt.AlignHCenter)
         self.gridLayout_4.addLayout(self.horizontalLayout_3, 2, 0, 1, 1)
         self.xpos = QtWidgets.QDoubleSpinBox(self.centralwidget)
         self.xpos.setMaximumSize(QtCore.QSize(100, 16777215))
@@ -853,22 +903,31 @@ class Ui_Scanner(object):
         self.actionView_Log = QtWidgets.QAction(Scanner)
         self.actionView_Log.setObjectName("actionView_Log")
         self.actionLoad_Parameters_from_file = QtWidgets.QAction(Scanner)
-        self.actionLoad_Parameters_from_file.setObjectName("actionLoad_Parameters_from_file")
+        self.actionLoad_Parameters_from_file.setObjectName(
+            "actionLoad_Parameters_from_file")
         self.actionSave_current_parameters_to_file = QtWidgets.QAction(Scanner)
-        self.actionSave_current_parameters_to_file.setObjectName("actionSave_current_parameters_to_file")
+        self.actionSave_current_parameters_to_file.setObjectName(
+            "actionSave_current_parameters_to_file")
         self.actionReset_to_default_parameters = QtWidgets.QAction(Scanner)
-        self.actionReset_to_default_parameters.setObjectName("actionReset_to_default_parameters")
-        self.actionSet_current_parameters_as_default = QtWidgets.QAction(Scanner)
-        self.actionSet_current_parameters_as_default.setObjectName("actionSet_current_parameters_as_default")
+        self.actionReset_to_default_parameters.setObjectName(
+            "actionReset_to_default_parameters")
+        self.actionSet_current_parameters_as_default = QtWidgets.QAction(
+            Scanner)
+        self.actionSet_current_parameters_as_default.setObjectName(
+            "actionSet_current_parameters_as_default")
         self.menuFile.addAction(self.actionExit)
         self.menuOptions.addAction(self.actionStart_Camera)
         self.menuOptions.addAction(self.actionFocus)
         self.menuOptions.addSeparator()
         self.menuOptions.addAction(self.actionView_Log)
-        self.menuScan_Parameters.addAction(self.actionLoad_Parameters_from_file)
-        self.menuScan_Parameters.addAction(self.actionSave_current_parameters_to_file)
-        self.menuScan_Parameters.addAction(self.actionReset_to_default_parameters)
-        self.menuScan_Parameters.addAction(self.actionSet_current_parameters_as_default)
+        self.menuScan_Parameters.addAction(
+            self.actionLoad_Parameters_from_file)
+        self.menuScan_Parameters.addAction(
+            self.actionSave_current_parameters_to_file)
+        self.menuScan_Parameters.addAction(
+            self.actionReset_to_default_parameters)
+        self.menuScan_Parameters.addAction(
+            self.actionSet_current_parameters_as_default)
         self.menuSettings.addAction(self.actionGalvanometer)
         self.menuSettings.addAction(self.actionSteppermotor)
         self.menuSettings.addAction(self.menuScan_Parameters.menuAction())
@@ -926,11 +985,15 @@ class Ui_Scanner(object):
     def retranslateUi(self, Scanner):
         _translate = QtCore.QCoreApplication.translate
         Scanner.setWindowTitle(_translate("Scanner", "MainWindow"))
-        self.sampleID.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">     Sample ID:</span></p></body></html>"))
+        self.sampleID.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">     Sample ID:</span></p></body></html>"))
         self.saveDir_button.setText(_translate("Scanner", "Save Directory"))
-        self.commentLabel.setToolTip(_translate("Scanner", "<html><head/><body><p>Add comments to be stored into the saved file.</p></body></html>"))
-        self.commentLabel.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Add </span></p><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Comments</span></p></body></html>"))
-        self.comments.setToolTip(_translate("Scanner", "<html><head/><body><p>Anything entered here will be stored into the saved file.</p><p>Please add all necessary information related to the sample and scanning.</p></body></html>"))
+        self.commentLabel.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Add comments to be stored into the saved file.</p></body></html>"))
+        self.commentLabel.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Add </span></p><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">Comments</span></p></body></html>"))
+        self.comments.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Anything entered here will be stored into the saved file.</p><p>Please add all necessary information related to the sample and scanning.</p></body></html>"))
         comment = "Sample Details:\nFilter:\nLaser wavelength:\nAttenuater:\nIntensity:\nPolarizer:\nAnalyzer:\nMemo:"
         self.comments.setText(comment)
         font = QtGui.QFont()
@@ -938,91 +1001,135 @@ class Ui_Scanner(object):
         font.setPointSize(12)
         self.comments.setFont(font)
         self.sample_name.setFont(font)
-        self.loadImage_button.setToolTip(_translate("Scanner", "<html><head/><body><p>Load a saved Image.</p><p>The starting coordinates are valid only if the sample has not been replaced.</p></body></html>"))
-        self.loadImage_button.setText(_translate("Scanner", "Load Image from file"))
-        self.select_scan_area.setToolTip(_translate("Scanner", "<html><head/><body><p>Select the region to be scanned</p></body></html>"))
-        self.select_scan_area.setText(_translate("Scanner", "Select Scan Area"))
+        self.loadImage_button.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Load a saved Image.</p><p>The starting coordinates are valid only if the sample has not been replaced.</p></body></html>"))
+        self.loadImage_button.setText(
+            _translate("Scanner", "Load Image from file"))
+        self.select_scan_area.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Select the region to be scanned</p></body></html>"))
+        self.select_scan_area.setText(
+            _translate("Scanner", "Select Scan Area"))
         self.plot_type.setItemText(0, _translate("Scanner", "Raw SHG Data"))
         self.plot_type.setItemText(1, _translate("Scanner", "Reference Data"))
         self.plot_type.setItemText(2, _translate("Scanner", "Processed Data"))
-        self.scan_mode.setToolTip(_translate("Scanner", "<html><head/><body><p>Select scan mode. Single crystals use transmission mode, and thin-films use reflection mode to scan.</p></body></html>"))
-        self.scan_mode.setItemText(0, _translate("Scanner", "Transmission Mode (Single Crystal)"))
-        self.scan_mode.setItemText(1, _translate("Scanner", "Reflection Mode (Thin Film)"))
-        self.label_time_per_step.setToolTip(_translate("Scanner", "Scan time per step"))
-        self.label_time_per_step.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Time per step (s)</span></p></body></html>"))
-        self.label_scan_rate.setToolTip(_translate("Scanner", "Number of points scanned per second"))
-        self.label_scan_rate.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Scan Rate (s</span><span style=\" font-weight:600; vertical-align:super;\">-1</span><span style=\" font-weight:600;\">)</span></p></body></html>"))
-        self.label_xaxis.setToolTip(_translate("Scanner", "<html><head/><body><p>Shortcut key: Right &amp; Left Arrow</p></body></html>"))
-        self.label_xaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">X-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
+        self.scan_mode.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Select scan mode. Single crystals use transmission mode, and thin-films use reflection mode to scan.</p></body></html>"))
+        self.scan_mode.setItemText(0, _translate(
+            "Scanner", "Transmission Mode (Single Crystal)"))
+        self.scan_mode.setItemText(1, _translate(
+            "Scanner", "Reflection Mode (Thin Film)"))
+        self.label_time_per_step.setToolTip(
+            _translate("Scanner", "Scan time per step"))
+        self.label_time_per_step.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Time per step (s)</span></p></body></html>"))
+        self.label_scan_rate.setToolTip(_translate(
+            "Scanner", "Number of points scanned per second"))
+        self.label_scan_rate.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Scan Rate (s</span><span style=\" font-weight:600; vertical-align:super;\">-1</span><span style=\" font-weight:600;\">)</span></p></body></html>"))
+        self.label_xaxis.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Shortcut key: Right &amp; Left Arrow</p></body></html>"))
+        self.label_xaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">X-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
         self.toolButton_xhome.setText(_translate("Scanner", "..."))
-        self.label_yaxis.setToolTip(_translate("Scanner", "<html><head/><body><p>Shortcut key: Up &amp; Down Arrow</p></body></html>"))
-        self.label_yaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Y-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
+        self.label_yaxis.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Shortcut key: Up &amp; Down Arrow</p></body></html>"))
+        self.label_yaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Y-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
         self.toolButton_yhome.setText(_translate("Scanner", "..."))
-        self.label_zaxis.setToolTip(_translate("Scanner", "<html><head/><body><p>Shortcut key: &quot;Shift+Right&quot; &amp; &quot;Shift+Left&quot; Arrow</p></body></html>"))
-        self.label_zaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Z-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
+        self.label_zaxis.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Shortcut key: &quot;Shift+Right&quot; &amp; &quot;Shift+Left&quot; Arrow</p></body></html>"))
+        self.label_zaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:12pt; font-weight:600;\">Z-Axis </span><span style=\" font-size:10pt; font-weight:600;\">(μm)</span></p></body></html>"))
         self.toolButton_zhome.setText(_translate("Scanner", "..."))
-        self.label_stageMove.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">STAGE</span></p></body></html>"))
+        self.label_stageMove.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-size:12pt; font-weight:600;\">STAGE</span></p></body></html>"))
         self.stageStop_Button.setText(_translate("Scanner", "STOP Stage"))
-        self.label_size.setToolTip(_translate("Scanner", "Total length of scanned region for each axis"))
-        self.label_size.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Size (µm)</span></p></body></html>"))
+        self.label_size.setToolTip(_translate(
+            "Scanner", "Total length of scanned region for each axis"))
+        self.label_size.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Size (µm)</span></p></body></html>"))
         self.yscanorder.setItemText(0, _translate("Scanner", "1"))
         self.yscanorder.setItemText(1, _translate("Scanner", "2"))
         self.yscanorder.setItemText(2, _translate("Scanner", "3"))
         self.zactive.setToolTip(_translate("Scanner", "check to scan height"))
-        self.zaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z</span></p></body></html>"))
+        self.zaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Z</span></p></body></html>"))
         self.zscanorder.setItemText(0, _translate("Scanner", "1"))
         self.zscanorder.setItemText(1, _translate("Scanner", "2"))
         self.zscanorder.setItemText(2, _translate("Scanner", "3"))
-        self.queueStart_Button.setToolTip(_translate("Scanner", "<html><head/><body><p>Start the queue measurement</p></body></html>"))
+        self.queueStart_Button.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Start the queue measurement</p></body></html>"))
         self.queueStart_Button.setText(_translate("Scanner", "Start Queue"))
-        self.stop_button.setToolTip(_translate("Scanner", "Click to abort the scan"))
+        self.stop_button.setToolTip(_translate(
+            "Scanner", "Click to abort the scan"))
         self.stop_button.setText(_translate("Scanner", "Stop"))
-        self.queueAdd_Button.setToolTip(_translate("Scanner", "<html><head/><body><p>Add current measurement parameters to queue</p></body></html>"))
+        self.queueAdd_Button.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Add current measurement parameters to queue</p></body></html>"))
         self.queueAdd_Button.setText(_translate("Scanner", "Add to Queue"))
-        self.queueModify_Button.setToolTip(_translate("Scanner", "<html><head/><body><p>View or modify the parameters stored in the queue</p></body></html>"))
-        self.queueModify_Button.setText(_translate("Scanner", "View/Modify Queue"))
+        self.queueModify_Button.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>View or modify the parameters stored in the queue</p></body></html>"))
+        self.queueModify_Button.setText(
+            _translate("Scanner", "View/Modify Queue"))
         self.scan_type.setToolTip(_translate("Scanner", "<html><head/><body><p>Select scan style. </p><p>Move laser to scan uses the galvanometer to move the laser while sample is fixed, to create the image.</p><p>Move sample uses the stepper motor to move the sample while laser is fixed.</p><p>Note: height (z) scan can be done only by moving the sample stage.</p></body></html>"))
         self.scan_type.setItemText(0, _translate("Scanner", "Laser Scan"))
         self.scan_type.setItemText(1, _translate("Scanner", "Stage Scan"))
-        self.start_button.setToolTip(_translate("Scanner", "Click here to start scanning"))
+        self.start_button.setToolTip(_translate(
+            "Scanner", "Click here to start scanning"))
         self.start_button.setText(_translate("Scanner", "Start"))
         self.scan_kind.setToolTip(_translate("Scanner", "<html><head/><body><p>Select nature of the scan.</p><p>Trace: scans from left(top) to right(bottom)</p><p>Retrace: scans from right(bottom) to left(top)</p><p>Trace and Retrace: Generate two images, one from trace, and another from retrace</p><p>Alternate trace and retrace: Save scan time by scanning one line from left to right, next line from right to left, and so on. </p></body></html>"))
         self.scan_kind.setItemText(0, _translate("Scanner", "Trace"))
         self.scan_kind.setItemText(1, _translate("Scanner", "Retrace"))
         self.scan_kind.setItemText(2, _translate("Scanner", "Trace & Retrace"))
-        self.scan_kind.setItemText(3, _translate("Scanner", "Alternate Trace/Retrace"))
-        self.queueScanNext.setToolTip(_translate("Scanner", "<html><head/><body><p>Skip current measurement, and jump to next measurement in queue</p></body></html>"))
+        self.scan_kind.setItemText(3, _translate(
+            "Scanner", "Alternate Trace/Retrace"))
+        self.queueScanNext.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Skip current measurement, and jump to next measurement in queue</p></body></html>"))
         self.queueScanNext.setText(_translate("Scanner", "Scan Next"))
         self.clear_button.setText(_translate("Scanner", "Clear"))
-        self.label_step.setToolTip(_translate("Scanner", "<html><head/><body><p>Distance to move from one point to next. </p><p>This tab cannot be edited here.</p><p>Change number of points to change step size.</p></body></html>"))
-        self.label_step.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Step size (µm)</span></p></body></html>"))
+        self.label_step.setToolTip(_translate(
+            "Scanner", "<html><head/><body><p>Distance to move from one point to next. </p><p>This tab cannot be edited here.</p><p>Change number of points to change step size.</p></body></html>"))
+        self.label_step.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Step size (µm)</span></p></body></html>"))
         self.label_scan_order.setToolTip(_translate("Scanner", "Set the order of scan direction. 1 is fast scan direction, and so on.\n"
-"Make no two axis have same value."))
-        self.label_scan_order.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Scan Order </span></p></body></html>"))
-        self.label_position.setText(_translate("Scanner", "<html><head/><body><p align=\"center\">Start Position</p></body></html>"))
-        self.label_points.setToolTip(_translate("Scanner", "Number of points scanned per axis"))
-        self.label_points.setText(_translate("Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Number of Points</span></p></body></html>"))
+                                                    "Make no two axis have same value."))
+        self.label_scan_order.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Scan Order </span></p></body></html>"))
+        self.label_position.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\">Start Position</p></body></html>"))
+        self.label_points.setToolTip(_translate(
+            "Scanner", "Number of points scanned per axis"))
+        self.label_points.setText(_translate(
+            "Scanner", "<html><head/><body><p align=\"center\"><span style=\" font-weight:600;\">Number of Points</span></p></body></html>"))
         self.xactive.setToolTip(_translate("Scanner", "check to scan x-axis"))
-        self.xaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X</span></p></body></html>"))
+        self.xaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">X</span></p></body></html>"))
         self.xscanorder.setItemText(0, _translate("Scanner", "1"))
         self.xscanorder.setItemText(1, _translate("Scanner", "2"))
         self.yactive.setToolTip(_translate("Scanner", "check to scan y-axis"))
-        self.yaxis.setText(_translate("Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y</span></p></body></html>"))
+        self.yaxis.setText(_translate(
+            "Scanner", "<html><head/><body><p><span style=\" font-size:10pt; font-weight:600;\">Y</span></p></body></html>"))
         self.menuFile.setTitle(_translate("Scanner", "File"))
         self.menuOptions.setTitle(_translate("Scanner", "Options"))
         self.menuSettings.setTitle(_translate("Scanner", "Settings"))
-        self.menuScan_Parameters.setTitle(_translate("Scanner", "Scan Parameters"))
+        self.menuScan_Parameters.setTitle(
+            _translate("Scanner", "Scan Parameters"))
         self.actionExit.setText(_translate("Scanner", "Exit"))
         self.actionFocus.setText(_translate("Scanner", "Focus Sample"))
         self.actionGalvanometer.setText(_translate("Scanner", "Galvanometer"))
         self.actionSteppermotor.setText(_translate("Scanner", "Stepper Motor"))
         self.actionStart_Camera.setText(_translate("Scanner", "Start Camera"))
-        self.actionLoad_Parameters_from_file.setText(_translate("Scanner", "Load Parameters from File"))
-        self.actionPlot_Settings.setText(_translate("Scanner", "Plot Parameters"))
+        self.actionLoad_Parameters_from_file.setText(
+            _translate("Scanner", "Load Parameters from File"))
+        self.actionPlot_Settings.setText(
+            _translate("Scanner", "Plot Parameters"))
         self.actionView_Log.setText(_translate("Scanner", "View Log"))
-        self.actionSave_current_parameters_to_file.setText(_translate("Scanner", "Save current parameters to file"))
-        self.actionReset_to_default_parameters.setText(_translate("Scanner", "Reset to default parameters"))
-        self.actionSet_current_parameters_as_default.setText(_translate("Scanner", "Set current parameters as default"))
+        self.actionSave_current_parameters_to_file.setText(
+            _translate("Scanner", "Save current parameters to file"))
+        self.actionReset_to_default_parameters.setText(
+            _translate("Scanner", "Reset to default parameters"))
+        self.actionSet_current_parameters_as_default.setText(
+            _translate("Scanner", "Set current parameters as default"))
+
 
 if __name__ == "__main__":
     import sys
@@ -1032,4 +1139,3 @@ if __name__ == "__main__":
     ui.setupUi(Scanner)
     Scanner.show()
     sys.exit(app.exec_())
-

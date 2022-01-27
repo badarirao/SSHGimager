@@ -16,8 +16,9 @@ from nidaqmx.error_codes import DAQmxErrors
 #from PyQt5.QtCore import QTimer, QEventLoop
 #from PyQt5.QtCore import Qt
 
+
 class Galvano():
-    def __init__(self,daq='Dev1/',aochan='ao0:1'):
+    def __init__(self, daq='Dev1/', aochan='ao0:1'):
         self.daq = daq
         self.ao_chan = daq+aochan
         self._xscale = 1
@@ -41,111 +42,111 @@ class Galvano():
     def create_taskxy(self):
         self.taskxy = Task()
         self.taskxy.ao_channels.add_ao_voltage_chan(self.ao_chan)
-    
+
     def create_taskx(self):
         self.taskx = Task()
         self.taskx.ao_channels.add_ao_voltage_chan("Dev1/ao0")
-        
-    def set_xscan_param(self,nx=100,xmin=-10,xmax=10):
+
+    def set_xscan_param(self, nx=100, xmin=-10, xmax=10):
         self.nx = nx
         self.xVmax = xmax/self.xscale
         self.xVmin = xmin/self.xscale
-    
-    def set_yscan_param(self,ny=100,ymin=-10,ymax=10):
+
+    def set_yscan_param(self, ny=100, ymin=-10, ymax=10):
         self.ny = ny
         self.ymax = ymax/self.yscale
         self.ymin = ymin/self.yscale
-        
-    def set_scan_param(self,fast_dir='x',srate=100):
+
+    def set_scan_param(self, fast_dir='x', srate=100):
         self.fast_dir = fast_dir
         self.srate = srate
-        
+
     @property
     def srate(self):
         return self._srate
-    
+
     @srate.setter
-    def srate(self,value):
+    def srate(self, value):
         if self._srate != value:
             self._srate = value
-        
+
     @property
     def fast_dir(self):
         return self._fast_dir
-    
-    @fast_dir.setter 
-    def fast_dir(self,value):
-        a = ['x','X','y','Y']
+
+    @fast_dir.setter
+    def fast_dir(self, value):
+        a = ['x', 'X', 'y', 'Y']
         if value in a:
             if self._fast_dir != value:
                 self._fast_dir = value
         else:
             raise ValueError("Please specify only 'x' or 'y' ")
-            
-    @property 
+
+    @property
     def xscale(self):
         return self._xscale
-    
-    @xscale.setter 
-    def xscale(self,value):
+
+    @xscale.setter
+    def xscale(self, value):
         self._xscale = value
-    
-    @property 
+
+    @property
     def yscale(self):
         return self._yscale
-    
-    @yscale.setter 
-    def yscale(self,value):
+
+    @yscale.setter
+    def yscale(self, value):
         self._yscale = value
-    
-    @property 
+
+    @property
     def x(self):
         return -(self._x-self.xhome)/self.xscale
-    
-    @x.setter 
-    def x(self,value):
+
+    @x.setter
+    def x(self, value):
         self._x = -value*self.xscale+self.xhome
         try:
-            self.taskxy.write([self._y,self._x])
+            self.taskxy.write([self._y, self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_TASK.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._y,self._x])
-             
-    @property 
+            self.taskxy.write([self._y, self._x])
+
+    @property
     def y(self):
         return -(self._y-self.yhome)/self.yscale
-    
+
     @y.setter
-    def y(self,value):
+    def y(self, value):
         self._y = -value*self.yscale+self.yhome
         try:
-            self.taskxy.write([self._y,self._x])
+            self.taskxy.write([self._y, self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_TASK.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._y,self._x])
-        
-    def gotoxy(self,x,y):
+            self.taskxy.write([self._y, self._x])
+
+    def gotoxy(self, x, y):
         self._x = -x*self.xscale+self.xhome
         self._y = -y*self.yscale+self.yhome
         try:
-            self.taskxy.write([self._y,self._x])
+            self.taskxy.write([self._y, self._x])
         except DaqError as mes:
             if mes.error_code == DAQmxErrors.INVALID_Task.value:
                 self.create_taskxy()
             else:
                 self.taskxy.close()
                 self.create_taskxy()
-            self.taskxy.write([self._y,self._x])
-        
-    def getxyarray(self,xarr,yarr,retrace=2):
+            self.taskxy.write([self._y, self._x])
+
+    def getxyarray(self, xarr, yarr, retrace=2):
         if self.fast_dir == 'x':
             a1 = xarr
             a2 = yarr
@@ -156,44 +157,46 @@ class Galvano():
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == -1: # scan each line only in opposite direction (only retrace)
+                a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        # scan each line only in opposite direction (only retrace)
+        elif retrace == -1:
             a1_arr = flip(a1)
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,flip(a1))
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == 0: # scan trace and retrace a line, then go to next line
-            a1 = append(a1,flip(a1))
+                a1_arr = append(a1_arr, flip(a1))
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        elif retrace == 0:  # scan trace and retrace a line, then go to next line
+            a1 = append(a1, flip(a1))
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
-                a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
-        elif retrace == 2: # scan trace one line, retrace next line , and so on..
+                a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+        elif retrace == 2:  # scan trace one line, retrace next line , and so on..
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             flp = 1
             for i in range(len(a2)-1):
                 flp = flp * -1
                 if flp == -1:
-                    a1_arr = append(a1_arr,flip(a1))
+                    a1_arr = append(a1_arr, flip(a1))
                 else:
-                    a1_arr = append(a1_arr,a1)
-                a2_arr = append(a2_arr,a2[i+1]*ones(len(a1)))
+                    a1_arr = append(a1_arr, a1)
+                a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
         if self.fast_dir == 'x':
-            a1_arr = append(a1_arr[0],a1_arr)
-            a2_arr = append(a2_arr[0],a2_arr)
+            a1_arr = append(a1_arr[0], a1_arr)
+            a2_arr = append(a2_arr[0], a2_arr)
         else:
             temp = copy(a2_arr)
-            a2_arr = append(a1_arr[0],a1_arr)
-            a1_arr = append(temp[0],temp)
-        return append(a1_arr,a2_arr).reshape(2,len(a1_arr))
-                
+            a2_arr = append(a1_arr[0], a1_arr)
+            a1_arr = append(temp[0], temp)
+        return append(a1_arr, a2_arr).reshape(2, len(a1_arr))
+
+
 class Scan(Galvano):
-    def __init__(self,daq='Dev1/',aochan='ao0:1',ctr='ctr0',ctr_src='PFI0',s_clock='/ao/SampleClock'):
-        super().__init__(daq,aochan)
+    def __init__(self, daq='Dev1/', aochan='ao0:1', ctr='ctr0', ctr_src='PFI0', s_clock='/ao/SampleClock'):
+        super().__init__(daq, aochan)
         self.ctr_chan = daq + ctr
         self.ctr_src_chan = '/' + daq + ctr_src
         self.s_clock_chan = '/' + daq + s_clock
@@ -205,7 +208,7 @@ class Scan(Galvano):
         self.scanning = True
         self.ID = 'NI6211'
         self.scancomplete = False
-    
+
     def create_ctr(self):
         try:
             self.counter.close()
@@ -215,12 +218,12 @@ class Scan(Galvano):
             try:
                 self.counter = Task('counter')
                 self.counter.ci_channels.add_ci_count_edges_chan(self.ctr_chan,
-                 initial_count=0,edge=Edge.RISING,count_direction=CountDirection.COUNT_UP)
+                                                                 initial_count=0, edge=Edge.RISING, count_direction=CountDirection.COUNT_UP)
                 self.counter.channels.ci_count_edges_term = self.ctr_src_chan
             except Exception as e:
                 print(e)
                 raise DaqError
-            
+
     def create_ref(self):
         try:
             self.reference.close()
@@ -230,50 +233,52 @@ class Scan(Galvano):
             try:
                 self.reference = Task()
                 self.reference.ai_channels.add_ai_voltage_chan('Dev1/ai0',
-                 terminal_config = TerminalConfiguration.RSE, min_val = 0, max_val = 2)
+                                                               terminal_config=TerminalConfiguration.RSE, min_val=0, max_val=2)
                 self.reference.channels.ai_rng_high = 0.2
                 self.reference.channels.ai_rng_low = -0.2
             except Exception as e:
                 print(e)
                 raise DaqError
-            
-    def start_scanxy(self,xarr,yarr,retrace=2):
+
+    def start_scanxy(self, xarr, yarr, retrace=2):
         self.startscan = True
         self.retrace = retrace
         self.xarr = xarr*self.xscale + self.xhome
         self.yarr = yarr*self.yscale + self.yhome
         self.i = 0
-        t = 10 # default timeout = 10 seconds
-        sample = self.getxyarray(self.xarr,self.yarr,retrace)
+        t = 10  # default timeout = 10 seconds
+        sample = self.getxyarray(self.xarr, self.yarr, retrace)
         temp = -sample[0].copy()
         sample[0] = -sample[1].copy()
         sample[1] = temp.copy()
-        self.sampleIndex = self.getxyarray(range(len(self.xarr)),range(len(self.yarr)),retrace)
+        self.sampleIndex = self.getxyarray(
+            range(len(self.xarr)), range(len(self.yarr)), retrace)
         #temp = self.sampleIndex[0].copy()
         #self.sampleIndex[0] = self.sampleIndex[1].copy()
         #self.sampleIndex[1] = temp.copy()
-        self.sampleIndex = self.sampleIndex[:,1:].astype(int)
+        self.sampleIndex = self.sampleIndex[:, 1:].astype(int)
         self.sam_pc = shape(sample)[1]
         total_time = self.sam_pc*len(sample)/self.srate
         if t < total_time + 1:
             t = total_time + 2
-        # configure the galvanometer    
-        self.taskxy.timing.cfg_samp_clk_timing(rate = self.srate+1, \
-                                               sample_mode = AcquisitionType.FINITE, \
-                                                   samps_per_chan = self.sam_pc)
-        self.taskxy.timing.cfg_samp_clk_timing(rate = self.srate, \
-                                               sample_mode = AcquisitionType.FINITE, \
-                                                   samps_per_chan = self.sam_pc)
-        writer = stream_writers.AnalogMultiChannelWriter(self.taskxy.out_stream,auto_start=False)
-        writer.write_many_sample(sample,timeout=t)
+        # configure the galvanometer
+        self.taskxy.timing.cfg_samp_clk_timing(rate=self.srate+1,
+                                               sample_mode=AcquisitionType.FINITE,
+                                               samps_per_chan=self.sam_pc)
+        self.taskxy.timing.cfg_samp_clk_timing(rate=self.srate,
+                                               sample_mode=AcquisitionType.FINITE,
+                                               samps_per_chan=self.sam_pc)
+        writer = stream_writers.AnalogMultiChannelWriter(
+            self.taskxy.out_stream, auto_start=False)
+        writer.write_many_sample(sample, timeout=t)
         # configure the photodetector (counter)
-        self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",\
-                                                sample_mode=AcquisitionType.FINITE,\
-                                                    samps_per_chan=self.sam_pc)
+        self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",
+                                                sample_mode=AcquisitionType.FINITE,
+                                                samps_per_chan=self.sam_pc)
         self.counter.in_stream.read_all_avail_samp = True
-        self.reference.timing.cfg_samp_clk_timing(self.srate,source="/Dev1/ao/SampleClock",\
-                                                  sample_mode=AcquisitionType.FINITE,\
-                                                      samps_per_chan=self.sam_pc)
+        self.reference.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",
+                                                  sample_mode=AcquisitionType.FINITE,
+                                                  samps_per_chan=self.sam_pc)
         self.reference.in_stream.read_all_avail_samp = True
         if retrace != 0:
             self.shgData = zeros(self.sam_pc)
@@ -287,14 +292,17 @@ class Scan(Galvano):
         self.counter.start()
         self.reference.start()
         self.taskxy.start()
-    
+
     def update_scanxy(self):
         if self.startscan == False:
             return False
         try:
-            buffer_shg = array(self.counter.read(number_of_samples_per_channel=READ_ALL_AVAILABLE),dtype=float)
+            buffer_shg = array(self.counter.read(
+                number_of_samples_per_channel=READ_ALL_AVAILABLE), dtype=float)
             number_of_SHG_samples = len(buffer_shg)
-            buffer_ref = 1000000*array(self.reference.read(number_of_samples_per_channel=number_of_SHG_samples),dtype=float)
+            buffer_ref = 1000000 * \
+                array(self.reference.read(
+                    number_of_samples_per_channel=number_of_SHG_samples), dtype=float)
             buffer_ref[buffer_ref < 100] = 1  # to avoid divide by zero error
             self.shgData[self.i:self.i+number_of_SHG_samples] = buffer_shg
             self.refData[self.i:self.i+number_of_SHG_samples] = buffer_ref
@@ -304,24 +312,24 @@ class Scan(Galvano):
                 self.diff_data_shg[self.i-1] = 0
             except IndexError:
                 pass
-            self.img_dataSHG = zeros((len(self.xarr),len(self.yarr)))
-            self.img_dataRef = -ones((len(self.xarr),len(self.yarr)))
+            self.img_dataSHG = zeros((len(self.xarr), len(self.yarr)))
+            self.img_dataRef = -ones((len(self.xarr), len(self.yarr)))
             if self.retrace == 0:
-                self.img_dataSHG2 = zeros((len(self.xarr),len(self.yarr)))
-                self.img_dataRef2 = -ones((len(self.xarr),len(self.yarr)))
+                self.img_dataSHG2 = zeros((len(self.xarr), len(self.yarr)))
+                self.img_dataRef2 = -ones((len(self.xarr), len(self.yarr)))
             for pos in range(self.sam_pc-1):
-                i = self.sampleIndex[0,pos]
-                j = self.sampleIndex[1,pos]
+                i = self.sampleIndex[0, pos]
+                j = self.sampleIndex[1, pos]
                 if self.retrace != 0:
-                    self.img_dataSHG[i,j] = self.diff_data_shg[pos]
-                    self.img_dataRef[i,j] = self.refData[pos+1]
+                    self.img_dataSHG[i, j] = self.diff_data_shg[pos]
+                    self.img_dataRef[i, j] = self.refData[pos+1]
                 else:
-                    if self.img_dataSHG[i,j] == 0:
-                        self.img_dataSHG[i,j] = self.diff_data_shg[pos]
-                        self.img_dataRef[i,j] = self.refData[pos+1]
+                    if self.img_dataSHG[i, j] == 0:
+                        self.img_dataSHG[i, j] = self.diff_data_shg[pos]
+                        self.img_dataRef[i, j] = self.refData[pos+1]
                     else:
-                        self.img_dataSHG2[i,j] = self.diff_data_shg[pos]
-                        self.img_dataRef2[i,j] = self.refData[pos+1]
+                        self.img_dataSHG2[i, j] = self.diff_data_shg[pos]
+                        self.img_dataRef2[i, j] = self.refData[pos+1]
             self.img_Processed = self.img_dataSHG/self.img_dataRef
             if self.retrace == 0:
                 self.img_Processed2 = self.img_dataSHG2/self.img_dataRef2
@@ -334,7 +342,7 @@ class Scan(Galvano):
             print("Daqerror encountered")
             self.startscan = False
             return False
-    
+
     def stop_scanxy(self):
         self.counter.stop()
         self.reference.stop()
@@ -343,31 +351,32 @@ class Scan(Galvano):
         self.create_taskxy()
         self.startscan = False
         # move laser to home position
-        self.gotoxy(0,0)
+        self.gotoxy(0, 0)
         #print('Executed gal stop scanxy')
-        
+
     def start_single_point_counter(self):
         try:
             self.taskxy.close()
         except:
             pass
         self.create_taskx()
-        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate+1, \
-                                               sample_mode = AcquisitionType.FINITE, \
-                                                   samps_per_chan = 2)
-        self.taskx.timing.cfg_samp_clk_timing(rate = self.srate, \
-                                               sample_mode = AcquisitionType.FINITE,\
-                                                   samps_per_chan=2)
-        self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",\
-                                                sample_mode=AcquisitionType.FINITE,\
-                                                    samps_per_chan=2)
+        self.taskx.timing.cfg_samp_clk_timing(rate=self.srate+1,
+                                              sample_mode=AcquisitionType.FINITE,
+                                              samps_per_chan=2)
+        self.taskx.timing.cfg_samp_clk_timing(rate=self.srate,
+                                              sample_mode=AcquisitionType.FINITE,
+                                              samps_per_chan=2)
+        self.counter.timing.cfg_samp_clk_timing(self.srate, source="/Dev1/ao/SampleClock",
+                                                sample_mode=AcquisitionType.FINITE,
+                                                samps_per_chan=2)
         self.counter.in_stream.read_all_avail_samp = True
-        writer = stream_writers.AnalogSingleChannelWriter(self.taskx.out_stream)
-        data = array((self._y,self._y),dtype=float)
+        writer = stream_writers.AnalogSingleChannelWriter(
+            self.taskx.out_stream)
+        data = array((self._y, self._y), dtype=float)
         writer.write_many_sample(data)
         self.reference.start()
         # first just try to see if the pulse generator works fine.
-    
+
     def readCounts(self):
         # TODO check if counter works properly
         """
@@ -390,13 +399,14 @@ class Scan(Galvano):
         self.taskx.start()
         while not self.counter.is_task_done():
             pass
-        counts = diff(array(self.counter.read(number_of_samples_per_channel = READ_ALL_AVAILABLE),dtype=float))
+        counts = diff(array(self.counter.read(
+            number_of_samples_per_channel=READ_ALL_AVAILABLE), dtype=float))
         refV = 1000000*self.reference.read()
         if refV < 100:
             refV = 1
         self.counter.stop()
         self.taskx.stop()
-        return counts[0],refV
+        return counts[0], refV
 
     def stop_single_point_counter(self):
         self.counter.stop()
@@ -404,12 +414,12 @@ class Scan(Galvano):
         self.create_ref()
         self.taskx.close()
         self.create_taskxy()
-        
+
     def close_all_channels(self):
         self.taskxy.close()
         self.counter.close()
         self.reference.close()
-                  
+
     def __del__(self):
         try:
             self.taskxy.close()
@@ -418,7 +428,8 @@ class Scan(Galvano):
             self.taskx.close()
         except:
             pass
-        
+
+
 """
 img = Scan()
 import numpy as np

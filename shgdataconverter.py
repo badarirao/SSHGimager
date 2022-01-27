@@ -46,35 +46,41 @@ if __name__ == "__main__":
                 for dset in dataSet:
                     if 'scan information' in dset.modality.lower():
                         info = dset.metadata['metadata']
-                        with open('.\Converted\\'+info['File Name']+'_info.txt','w') as f:
-                            for key,value in info.items():
+                        with open('.\Converted\\'+info['File Name']+'_info.txt', 'w') as f:
+                            for key, value in info.items():
                                 if 'comment' in key.lower():
                                     f.write('{0}\n'.format(value))
                                 else:
-                                    f.write('{0}: {1}\n'.format(key,value))
+                                    f.write('{0}: {1}\n'.format(key, value))
                 for dset in dataSet:
                     if 'scan information' not in dset.modality.lower():
                         arr = array(dset)
-                        filename = '.\Converted\\'+info['File Name'] + '_' + dset.title.split('/')[-1] + '.txt'
+                        filename = '.\Converted\\' + \
+                            info['File Name'] + '_' + \
+                            dset.title.split('/')[-1] + '.txt'
                         if info['Dimension'] == 1:
                             xarr = array(dset.aAxis)
-                            whole_data = column_stack((xarr,arr))
-                            savetxt(filename,whole_data,fmt='%g',delimiter='\t')
+                            whole_data = column_stack((xarr, arr))
+                            savetxt(filename, whole_data,
+                                    fmt='%g', delimiter='\t')
                             if 'shg' in dset.title.lower():
                                 try:
-                                    CurveVisualizer(dset).fig.savefig(filename[:-4]+'.png')
+                                    CurveVisualizer(dset).fig.savefig(
+                                        filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 2:
-                            savetxt(filename, arr, fmt='%g',delimiter='\t')
+                            savetxt(filename, arr, fmt='%g', delimiter='\t')
                             if 'shg' in dset.title.lower():
                                 try:
-                                    ImageVisualizer(dset).fig.savefig(filename[:-4]+'.png')
+                                    ImageVisualizer(dset).fig.savefig(
+                                        filename[:-4]+'.png')
                                 except:
                                     pass
                         elif info['Dimension'] == 3:
                             for i in range(arr.shape[0]):
-                                arr2D = arr[i,:,:]
-                                savetxt(filename,arr2D,fmt='%g',delimiter='\t')
-                                with open(filename,'a') as f:
+                                arr2D = arr[i, :, :]
+                                savetxt(filename, arr2D,
+                                        fmt='%g', delimiter='\t')
+                                with open(filename, 'a') as f:
                                     f.write('\n\n')

@@ -99,6 +99,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# Pylint
+.pylint.d
+
 # Rope project settings
 .ropeproject
 
