@@ -1379,12 +1379,13 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                             total_area *= float(info['cAxis']['Size'])
                         except KeyError:
                             pass
-                        line = "Date: {0}, Scan: {1}, Speed: {2} pps, Points: {3}, Area: {4}, Total Scan Time: {5}\n".format(info["Date & Time"],
-                                                                                                                             info['Scan Type'],
-                                                                                                                             info['Scan Speed'],
-                                                                                                                             total_points,
-                                                                                                                             total_area,
-                                                                                                                             info['Total Scan Time'])
+                        line = "Date: {0}, Scan: {1}, Scan Kind: {6}, Speed: {2} pps, Points: {3}, Area: {4}, Total Scan Time: {5}\n".format(info["Date & Time"],
+                                                                       info['Scan Type'],
+                                                                       info['Scan Speed'],
+                                                                       total_points,
+                                                                       total_area,
+                                                                       info['Total Scan Time'],
+                                                                       info['Scan Kind'])
                         f.write(line)
                         os.chdir(self.data_address)
                 break
