@@ -954,7 +954,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
 
     def selectScanMethod(self):
         i = self.scan_kind.currentIndex()
-        if self.zscanorder.currentIndex() == 0:
+        if self.zscanorder.currentIndex() == 0 and self.nd==3:
             self.scan_kind.setCurrentIndex(0)
         if not self.autochange:
             self.original_scanKind = i
