@@ -78,9 +78,9 @@ if __name__ == "__main__":
                                 except:
                                     pass
                         elif info['Dimension'] == 3:
-                            for i in range(arr.shape[0]):
-                                arr2D = arr[i, :, :]
-                                savetxt(filename, arr2D,
-                                        fmt='%g', delimiter='\t')
-                                with open(filename, 'a') as f:
+                            with open(filename, 'a') as f:
+                                for i in range(arr.shape[0]):
+                                    arr2D = arr[i, :, :]
+                                    savetxt(f, arr2D,
+                                            fmt='%g', delimiter='\t')
                                     f.write('\n\n')
