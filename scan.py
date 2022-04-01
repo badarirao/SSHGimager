@@ -1780,7 +1780,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         else:
             event.ignore()
 
-
 def main():
     app = QtWidgets.QApplication(sys.argv)
     gui = SHGscan()

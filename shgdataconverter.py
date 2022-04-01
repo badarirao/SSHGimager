@@ -46,7 +46,11 @@ if __name__ == "__main__":
                 for dset in dataSet:
                     if 'scan information' in dset.modality.lower():
                         info = dset.metadata['metadata']
-                        with open('.\Converted\\'+info['File Name']+'_info.txt', 'w') as f:
+                        if file.endswith(".shg"):
+                            fname = file[:-4]
+                        else:
+                            fname = file[:-6]
+                        with open('.\Converted\\'+fname+'_info.txt', 'w') as f:
                             for key, value in info.items():
                                 if 'comment' in key.lower():
                                     f.write('{0}\n'.format(value))
@@ -56,7 +60,7 @@ if __name__ == "__main__":
                     if 'scan information' not in dset.modality.lower():
                         arr = array(dset)
                         filename = '.\Converted\\' + \
-                            info['File Name'] + '_' + \
+                            fname + '_' + \
                             dset.title.split('/')[-1] + '.txt'
                         if info['Dimension'] == 1:
                             xarr = array(dset.aAxis)

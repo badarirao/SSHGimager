@@ -154,18 +154,24 @@ class Galvano():
             a1 = yarr
             a2 = xarr
         if retrace == 1:  # scan each line only in one direction (only trace)
+            a1 = append(a1[0],a1)    
             a1_arr = a1
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr, a1)
                 a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+            a1_arr = a1_arr[1:]
+            a2_arr = a2_arr[1:]
         # scan each line only in opposite direction (only retrace)
         elif retrace == -1:
+            a1 = append(a1,a1[-1])
             a1_arr = flip(a1)
             a2_arr = a2[0]*ones(len(a1))
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr, flip(a1))
                 a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
+            a1_arr = a1_arr[1:]
+            a2_arr = a2_arr[1:]
         elif retrace == 0:  # scan trace and retrace a line, then go to next line
             a1 = append(a1, flip(a1))
             a1_arr = a1
@@ -248,6 +254,7 @@ class Scan(Galvano):
         self.i = 0
         t = 10  # default timeout = 10 seconds
         sample = self.getxyarray(self.xarr, self.yarr, retrace)
+        #interchange x and y axis (it gets intechanged due to usage of mirror)
         temp = -sample[0].copy()
         sample[0] = -sample[1].copy()
         sample[1] = temp.copy()
