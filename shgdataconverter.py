@@ -74,7 +74,7 @@ if __name__ == "__main__":
                                 except:
                                     pass
                         elif info['Dimension'] == 2:
-                            savetxt(filename, arr, fmt='%g', delimiter='\t')
+                            savetxt(filename, arr.T, fmt='%g', delimiter='\t')
                             if 'shg' in dset.title.lower():
                                 try:
                                     ImageVisualizer(dset).fig.savefig(
@@ -82,9 +82,9 @@ if __name__ == "__main__":
                                 except:
                                     pass
                         elif info['Dimension'] == 3:
-                            with open(filename, 'a') as f:
+                            with open(filename, 'w') as f:
                                 for i in range(arr.shape[0]):
                                     arr2D = arr[i, :, :]
-                                    savetxt(f, arr2D,
+                                    savetxt(f, arr2D.T,
                                             fmt='%g', delimiter='\t')
                                     f.write('\n\n')
