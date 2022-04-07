@@ -35,6 +35,7 @@ Second line contains path of the last used directory to save images.
 # TODO: If counts are not detected, prompt to ask if adapters are set appropriately.
 # Continuous scan: only trace gives wrong counts at the edges. Need to account for it
 # TODO: GUI to view, process, and analyze all info from the image files.
+# TODO: save the raw counter reading to file for debugging purpose.
 """
 
 import os

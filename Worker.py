@@ -8,7 +8,7 @@ from scipy.signal import find_peaks
 from PyQt5.QtCore import QObject, pyqtSignal
 from utilities import Select, BUF, unique_filename
 from time import sleep
-from numpy import linspace, array, ones_like, zeros, average, argmax
+from numpy import linspace, array, ones_like, zeros, average, argmax, savetxt
 import h5py
 import sidpy
 import pyNSID
@@ -431,6 +431,11 @@ class ScanImage(QObject):
                     else:
                         info.metadata['Z-Focus peak on'] = 'Retrace'
         hf = h5py.File(self.fullfilename, 'w')
+        """ # For debugging purpose
+        if int((self.scanNum+1)/2)%2: # if it is galvano scan, store rawdata
+            savetxt(self.fullfilename[:-6]+".raw",self.Gal.shgData)
+            savetxt(self.fullfilename[:-6]+".ind",self.Gal.sampleIndex)
+        """
         hf.create_group('Processed Data')
         hf.create_group('Raw Data')
         hf.create_group('Reference Data')
