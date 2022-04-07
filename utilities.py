@@ -241,7 +241,7 @@ class FakeDAQ():
         self._xscale = 1
         self._yscale = 1
         self._srate = 100
-        self._fast_dir = 'x'
+        self.fast_dir = 'x'
         self._x = 0
         self._y = 0
         self.t = 6.78
@@ -356,24 +356,20 @@ class FakeDAQ():
             a1 = yarr
             a2 = xarr
         if retrace == 1:  # scan each line only in one direction (only trace)
-            a1 = append(a1[0],a1)    
             a1_arr = a1
-            a2_arr = a2[0]*ones(len(a1))
+            a1 = append(a1[0],a1)    
+            a2_arr = a2[0]*ones(len(a1)-1)
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr, a1)
                 a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
-            a1_arr = a1_arr[1:]
-            a2_arr = a2_arr[1:]
         # scan each line only in opposite direction (only retrace)
         elif retrace == -1:
-            a1 = append(a1,a1[-1])
             a1_arr = flip(a1)
-            a2_arr = a2[0]*ones(len(a1))
+            a1 = append(a1,a1[-1])
+            a2_arr = a2[0]*ones(len(a1)-1)
             for i in range(len(a2)-1):
                 a1_arr = append(a1_arr, flip(a1))
                 a2_arr = append(a2_arr, a2[i+1]*ones(len(a1)))
-            a1_arr = a1_arr[1:]
-            a2_arr = a2_arr[1:]
         elif retrace == 0:  # scan trace and retrace a line, then go to next line
             a1 = append(a1, flip(a1))
             a1_arr = a1
