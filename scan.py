@@ -36,6 +36,11 @@ Second line contains path of the last used directory to save images.
 # Continuous scan: only trace gives wrong counts at the edges. Need to account for it
 # TODO: GUI to view, process, and analyze all info from the image files.
 # TODO: save the raw counter reading to file for debugging purpose.
+# TODO: since the dark room is also used for other experiments, include a 
+        pause scan option. However, it may not be straightforward to implement, 
+        especially the galvano-continuous-scan.
+# TODO: Option to stop the scan if the photodetector detects sudden increase in 
+        intensity, due to switching on of the light.
 """
 
 import os
