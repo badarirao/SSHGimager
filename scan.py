@@ -41,6 +41,7 @@ Second line contains path of the last used directory to save images.
         especially the galvano-continuous-scan.
 # TODO: Option to stop the scan if the photodetector detects sudden increase in 
         intensity, due to switching on of the light.
+# TODO: Galvano high speed scan shows anomaly in the left-edge.
 """
 
 import os
