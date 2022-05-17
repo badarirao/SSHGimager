@@ -6,10 +6,23 @@ Created on Tue Jan 18 18:07:20 2022
 """
 
 import os
-from numpy import array, savetxt, column_stack
+from numpy import array, savetxt, column_stack, ones
 from SciFiReaders import NSIDReader
 from sidpy.viz.dataset_viz import CurveVisualizer, ImageVisualizer
 import sys
+
+def Rotate180(arr):
+    try:
+        rows, columns = arr.shape
+        Rarray = ones((rows,columns))
+        for i in range(rows):
+            for j in range(columns):
+                Rarray[i,j] = arr[rows-i-1,columns-j-1]
+        return Rarray
+    except AttributeError:
+        print("Invalid Array")
+    except ValueError:
+        print("Invalid Array shape")
 
 if __name__ == "__main__":
     ispath = True
@@ -75,6 +88,7 @@ if __name__ == "__main__":
                                     pass
                         elif info['Dimension'] == 2:
                             savetxt(filename, arr.T, fmt='%g', delimiter='\t')
+                            savetxt("Rotated_"+filename,Rotate180(arr.T),fmt='%g', delimiter='\t')
                             if 'shg' in dset.title.lower():
                                 try:
                                     ImageVisualizer(dset).fig.savefig(
@@ -86,5 +100,11 @@ if __name__ == "__main__":
                                 for i in range(arr.shape[0]):
                                     arr2D = arr[i, :, :]
                                     savetxt(f, arr2D.T,
+                                            fmt='%g', delimiter='\t')
+                                    f.write('\n\n')
+                            with open("Rotated_"+filename, 'w') as f:
+                                for i in range(arr.shape[0]):
+                                    arr2D = arr[i, :, :]
+                                    savetxt(f, Rotate180(arr2D.T),
                                             fmt='%g', delimiter='\t')
                                     f.write('\n\n')
