@@ -75,6 +75,9 @@ if __name__ == "__main__":
                         filename = '.\Converted\\' + \
                             fname + '_' + \
                             dset.title.split('/')[-1] + '.txt'
+                        rfilename = '.\Converted\\' + \
+                            "Rotated_" + fname + '_' + \
+                            dset.title.split('/')[-1] + '.txt'
                         if info['Dimension'] == 1:
                             xarr = array(dset.aAxis)
                             whole_data = column_stack((xarr, arr))
@@ -88,7 +91,7 @@ if __name__ == "__main__":
                                     pass
                         elif info['Dimension'] == 2:
                             savetxt(filename, arr.T, fmt='%g', delimiter='\t')
-                            savetxt("Rotated_"+filename,Rotate180(arr.T),fmt='%g', delimiter='\t')
+                            savetxt(rfilename,Rotate180(arr.T),fmt='%g', delimiter='\t')
                             if 'shg' in dset.title.lower():
                                 try:
                                     ImageVisualizer(dset).fig.savefig(
@@ -102,7 +105,7 @@ if __name__ == "__main__":
                                     savetxt(f, arr2D.T,
                                             fmt='%g', delimiter='\t')
                                     f.write('\n\n')
-                            with open("Rotated_"+filename, 'w') as f:
+                            with open(rfilename, 'w') as f:
                                 for i in range(arr.shape[0]):
                                     arr2D = arr[i, :, :]
                                     savetxt(f, Rotate180(arr2D.T),
