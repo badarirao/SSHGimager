@@ -1013,7 +1013,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.scan_kind.setEnabled(False)
         self.scan_mode.setEnabled(False)
         self.select_scan_area.setEnabled(False)
-        self.ref_plot.ui.roiBtn.setEnabled(False)
         self.saveDir_button.setEnabled(False)
         self.display_stagemove_msg()
         self.Stage.x = self.xposition-BUF
@@ -1350,7 +1349,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.toolButton_yhome.setEnabled(True)
         self.toolButton_zhome.setEnabled(True)
         self.select_scan_area.setEnabled(True)
-        self.ref_plot.ui.roiBtn.setEnabled(True)
         self.scan_kind.setEnabled(True)
         self.scan_mode.setEnabled(True)
         self.saveDir_button.setEnabled(True)
