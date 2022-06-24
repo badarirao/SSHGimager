@@ -274,11 +274,11 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.actionSet_current_parameters_as_default.triggered.connect(
             self.setDefault_scan_params)
         self.actionSteppermotor.triggered.connect(self.setstage)
-        self.xstep.editingFinished.connect(
+        self.xstep.valueChanged.connect(
             lambda: self.steps_to_points(self.xsize, self.xstep, self.xpoints))
-        self.ystep.editingFinished.connect(
+        self.ystep.valueChanged.connect(
             lambda: self.steps_to_points(self.ysize, self.ystep, self.ypoints))
-        self.zstep.editingFinished.connect(
+        self.zstep.valueChanged.connect(
             lambda: self.steps_to_points(self.zsize, self.zstep, self.zpoints))
         self.xsize.editingFinished.connect(
             lambda: self.steps_to_points(self.xsize, self.xstep, self.xpoints))
@@ -286,12 +286,12 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             lambda: self.steps_to_points(self.ysize, self.ystep, self.ypoints))
         self.zsize.editingFinished.connect(
             lambda: self.steps_to_points(self.zsize, self.zstep, self.zpoints))
-        self.srate_set.editingFinished.connect(
+        self.srate_set.valueChanged.connect(
             lambda: self.rate_to_tstep(self.srate_set, self.tperstep_set))
         self.xpos.editingFinished.connect(self.update_sizelimits)
         self.ypos.editingFinished.connect(self.update_sizelimits)
         self.zpos.editingFinished.connect(self.update_sizelimits)
-        self.tperstep_set.editingFinished.connect(
+        self.tperstep_set.valueChanged.connect(
             lambda: self.tstep_to_rate(self.srate_set, self.tperstep_set))
         self.setdefaults()
         if self.scan_type.currentIndex() == 0:
@@ -299,7 +299,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
                 self.galvanodialog.xmax-self.galvanodialog.xmin)
             self.ysize.setMaximum(
                 self.galvanodialog.ymax-self.galvanodialog.ymin)
-        self.ref_plot.roi.sigRegionChanged.connect(self.getroidata)
         self.ref_plot.ui.roiBtn.clicked.connect(self.chkselbutton)
         self.liveplot.view.scene().sigMouseMoved.connect(self.printliveplot_MousePos)
         self.ref_plot.view.scene().sigMouseMoved.connect(self.printrefplot_MousePos)
@@ -503,8 +502,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
             self.ref_plot.roi.setAngle(0)
             self.ref_plot.roi.removeHandle(1)  # remove the rotate handle
             self.ref_plot.ui.roiPlot.hide()
-            self.getroidata()
+            self.ref_plot.roi.sigRegionChanged.connect(self.getroidata)
         else:
+            self.ref_plot.roi.sigRegionChanged.disconnect()
             if len(self.rimage.shape) == 3:
                 self.ref_plot.setImage(self.rimage, pos=[0, 0], scale=[
                                        self.rascale, self.rbscale], xvals=self.rcAxis, autoLevels=False)
@@ -1013,6 +1013,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.scan_kind.setEnabled(False)
         self.scan_mode.setEnabled(False)
         self.select_scan_area.setEnabled(False)
+        self.ref_plot.ui.roiBtn.setEnabled(False)
         self.saveDir_button.setEnabled(False)
         self.display_stagemove_msg()
         self.Stage.x = self.xposition-BUF
@@ -1349,6 +1350,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.toolButton_yhome.setEnabled(True)
         self.toolButton_zhome.setEnabled(True)
         self.select_scan_area.setEnabled(True)
+        self.ref_plot.ui.roiBtn.setEnabled(True)
         self.scan_kind.setEnabled(True)
         self.scan_mode.setEnabled(True)
         self.saveDir_button.setEnabled(True)
