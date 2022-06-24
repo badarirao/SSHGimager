@@ -274,24 +274,24 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.actionSet_current_parameters_as_default.triggered.connect(
             self.setDefault_scan_params)
         self.actionSteppermotor.triggered.connect(self.setstage)
-        self.xstep.valueChanged.connect(
+        self.xstep.editingFinished.connect(
             lambda: self.steps_to_points(self.xsize, self.xstep, self.xpoints))
-        self.ystep.valueChanged.connect(
+        self.ystep.editingFinished.connect(
             lambda: self.steps_to_points(self.ysize, self.ystep, self.ypoints))
-        self.zstep.valueChanged.connect(
+        self.zstep.editingFinished.connect(
             lambda: self.steps_to_points(self.zsize, self.zstep, self.zpoints))
-        self.xsize.valueChanged.connect(
+        self.xsize.editingFinished.connect(
             lambda: self.steps_to_points(self.xsize, self.xstep, self.xpoints))
-        self.ysize.valueChanged.connect(
+        self.ysize.editingFinished.connect(
             lambda: self.steps_to_points(self.ysize, self.ystep, self.ypoints))
-        self.zsize.valueChanged.connect(
+        self.zsize.editingFinished.connect(
             lambda: self.steps_to_points(self.zsize, self.zstep, self.zpoints))
-        self.srate_set.valueChanged.connect(
+        self.srate_set.editingFinished.connect(
             lambda: self.rate_to_tstep(self.srate_set, self.tperstep_set))
-        self.xpos.valueChanged.connect(self.update_sizelimits)
-        self.ypos.valueChanged.connect(self.update_sizelimits)
-        self.zpos.valueChanged.connect(self.update_sizelimits)
-        self.tperstep_set.valueChanged.connect(
+        self.xpos.editingFinished.connect(self.update_sizelimits)
+        self.ypos.editingFinished.connect(self.update_sizelimits)
+        self.zpos.editingFinished.connect(self.update_sizelimits)
+        self.tperstep_set.editingFinished.connect(
             lambda: self.tstep_to_rate(self.srate_set, self.tperstep_set))
         self.setdefaults()
         if self.scan_type.currentIndex() == 0:
