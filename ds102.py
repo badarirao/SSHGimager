@@ -74,7 +74,8 @@ class DS102(Serial):
             self.write_param("AXIsX:SELectSPeed 0")
             self.write_param("AXIsY:SELectSPeed 1")
             self.write_param("AXIsZ:SELectSPeed 2")
-            self.set_unit(1) # set unit as micrometer
+            #self.set_unit(1) # set unit as micrometer
+            self.set_unit(0) # set unit as pulse
             self.set_xspeed(F=1000)
             self.set_yspeed(F=1000)
             self.set_zspeed(F=1000)
