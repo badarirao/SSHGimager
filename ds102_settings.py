@@ -205,6 +205,7 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         if os.path.isfile(self.filename):
             with open(self.filename, 'r') as file:
                 lines = file.readlines()
+                print(f"lines = {len(lines)}")
                 if len(lines) >= 35:
                     slines = lines[12:34]
                     for line in slines:
@@ -213,6 +214,7 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
                             params[lp[0]] = lp[2]
                         else:
                             params[lp[0]] = int(lp[2])
+                    print(params)
                     self.xscale = params['xscale']
                     self.yscale = params['yscale']
                     self.zscale = params['zscale']
