@@ -271,14 +271,13 @@ class DS102(Serial):
             sleep(0.1)
         
         def set_driver_division(self, xres=1, yres=1, zres=1):
-            xres = get_valid_drive(xres)
-            yres = get_valid_drive(yres)
-            zres = get_valid_drive(zres)
+            xres = Resol[get_valid_drive(xres)]
+            yres = Resol[get_valid_drive(yres)]
+            zres = Resol[get_valid_drive(zres)]
             self.write_param("AXIsX:DriverDIVsion {0}: \
                               AXIsY:DriverDivision {1}; \
                               AxisZ:DirverDIVision {2}".format(xres,yres,zres))
             sleep(0.1)
-        
         
         
         def set_xspeed(self,L=10,F=100,R=10,S=100):
@@ -345,9 +344,8 @@ class DS102(Serial):
             xres = self.read_param("AXIsX:DRiverDIVision?")
             yres = self.read_param("AXIsY:DRiverDIVision?")
             zres = self.read_param("AXIsZ:DRiverDIVision?")
-            #return iResol[xres],iResol[yres],iResol[zres]
-            return xres,yres,zres
-        
+            return iResol[xres],iResol[yres],iResol[zres]
+            
         def get_xdata(self):
             return self.read_param("AXIsX:DATA?")
     

@@ -114,8 +114,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.selectScanMethod()
         self.original_scanKind = self.scan_kind.currentIndex()
         self.update_screen()
-        self.Gal, self.Stage = checkInstrument(
-            ds102Port=self.ds102dialog.com, Fake=False)
+        self.Gal, self.Stage = checkInstrument(ds102Port=self.ds102dialog.com, Fake=False)
         self.functionalize_buttons()
         self.xpos.setValue(self.Stage.x)
         self.ypos.setValue(self.Stage.y)
@@ -911,6 +910,7 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.xpos.setMinimum(self.ds102dialog.xmin)
         self.ypos.setMaximum(self.ds102dialog.ymax)
         self.ypos.setMinimum(self.ds102dialog.ymin)
+        self.Stage.set_driver_division(self.ds102dialog.xdiv, self.ds102dialog.ydiv, self.ds102dialog.zdiv)
         self.update_sizelimits()
 
     def initialize_plot(self):

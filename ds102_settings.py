@@ -205,8 +205,8 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
         if os.path.isfile(self.filename):
             with open(self.filename, 'r') as file:
                 lines = file.readlines()
-                if len(lines) >= 32:
-                    slines = lines[12:31]
+                if len(lines) >= 35:
+                    slines = lines[12:34]
                     for line in slines:
                         lp = line.split()
                         if lp[0] == 'address':
@@ -231,6 +231,9 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
                     self.xhome = params['xhome']
                     self.yhome = params['yhome']
                     self.zhome = params['zhome']
+                    self.xdiv = params['x_division']
+                    self.ydiv = params['y_division']
+                    self.zdiv = params['z_division']
                     self.com = params['address']
                 else:
                     params_present = False
@@ -255,6 +258,9 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             self.xhome = 0
             self.yhome = 0
             self.zhome = 0
+            self.xdiv = 1
+            self.ydiv = 1
+            self.zdiv = 1
             self.com = 'com8'
             params['xscale'] = self.xscale
             params['yscale'] = self.yscale
@@ -274,6 +280,9 @@ class ds102setting(QtWidgets.QDialog, Ui_ds102Form):
             params['xhome'] = self.xhome
             params['yhome'] = self.yhome
             params['zhome'] = self.zhome
+            params['x_division'] = self.xdiv
+            params['y_division'] = self.ydiv
+            params['z_division'] = self.zdiv
             params['address'] = self.com
             with open(self.filename, 'r') as f:
                 lines = f.readlines()
