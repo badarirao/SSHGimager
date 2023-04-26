@@ -1,6 +1,6 @@
 # SSHGimager
 
-SSHGimager is a pyqt5 based gui program for scanning SHG microscopy of ferroelectric single crystals and thin films. It is designed to work with a custom built instrument by Prof. Hiroko Yokota. The python code to control the instrument and plot the images was written by Dr. Badari Narayana Rao.
+SSHGimager is a pyqt5 based python program for scanning SHG microscopy of ferroelectric single crystals and thin films. It is designed to work with a custom built instrument by Prof. Hiroko Yokota. The python code to control the instrument and plot the images was written by Dr. Badari Narayana Rao.
 If you are interested in running the program, and need help, feel free to email me at badari.rao@gmail.com.
 
 ## Software appearance
