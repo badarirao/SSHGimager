@@ -899,6 +899,9 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         sleep(0.1)
         self.Stage.set_yspeed(F=int(self.ds102dialog.yspeed))
         sleep(0.1)
+        self.Stage.set_driver_division(self.ds102dialog.xdiv, 
+                                       self.ds102dialog.ydiv, 
+                                       self.ds102dialog.zdiv)
         self.Stage.xscale = self.ds102dialog.xscale
         self.Stage.yscale = self.ds102dialog.yscale
         self.Stage.zscale = self.ds102dialog.zscale
@@ -910,7 +913,6 @@ class SHGscan(QtWidgets.QMainWindow, Ui_Scanner):
         self.xpos.setMinimum(self.ds102dialog.xmin)
         self.ypos.setMaximum(self.ds102dialog.ymax)
         self.ypos.setMinimum(self.ds102dialog.ymin)
-        self.Stage.set_driver_division(self.ds102dialog.xdiv, self.ds102dialog.ydiv, self.ds102dialog.zdiv)
         self.update_sizelimits()
 
     def initialize_plot(self):
