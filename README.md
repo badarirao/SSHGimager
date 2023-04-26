@@ -12,7 +12,10 @@ The instrument uses a tunable laser and can measure in both transmission and ref
 
 ## About the software
 
-The software allows for individual controlling of the x,y,and z stages needed during initial positioning. There are two modes of scanning for transmission mode: 
+The software allows for individual controlling of the x,y,and z stages needed during initial positioning. 
+The software controlls the instrument in a separate thread, enabling the user to use the software during the scan without disturbing it.
+
+There are two modes of scanning for transmission mode: 
 
 - Fast scanning using galvanomirrors, but limited to smaller area.
 - Slow scanning using stepper motors (larger area can be scanned).
